@@ -11,7 +11,6 @@ constant CommandPanel_HistIgnoreSpace = 0 // ”¼Šp‹ó”’‚©‚çn‚Ü‚éƒRƒ}ƒ“ƒh‚Í‹L˜^‚µ‚
 strconstant CommandPanel_HistIgnore = ";" // ‹L˜^‚µ‚È‚¢ƒRƒ}ƒ“ƒh‚ğStringMatch‚Ìƒpƒ^[ƒ“‚ÌƒŠƒXƒg‚Æ‚µ‚Ä‘‚­
 
 // Public Functions {{{1
-
 Function CommandPanel_Execute()
 	String input    = CommandPanel_GetLine()
 	CommandPanel_SetLine("")
@@ -61,15 +60,15 @@ End
 static Function/WAVE AddHistory(command)
 	String command
 	WAVE/T history=CommandPanel#GetTextWave("history")
-	// remove duplications
+	// Remove Duplications
 	if(CommandPanel_HistEraseDups)
 		Extract/T/O history,history,cmpstr(history,command)
 	elseif(CommandPanel_HistIgnoreDups && cmpstr(command,history[0]) == 0)
 		DeletePoints 0,1,history
 	endif
-	// add history
+	// Add History
 	InsertPoints 0,1,history; history[0]=command
-	// ignore history
+	// Ignore History
 	if(CommandPanel_HistIgnoreSpace && StringMatch(history[0]," *"))
 		DeletePoints 0,1,history
 	elseif(ItemsInList(CommandPanel_HistIgnore) && strlen(command))
