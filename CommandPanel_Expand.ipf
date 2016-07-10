@@ -4,7 +4,6 @@
 #include "CommandPanel_Interface"
 
 // Public Functions
-
 Function/WAVE CommandPanel_Expand(input)
 	String input
 	return Expand(input)
@@ -28,14 +27,14 @@ End
 static Function/WAVE Expand(input)
 	String input
 	InitAlias()
-	WAVE/T w1 = StrongLineSplit(input)           // 1. 行分割
-	WAVE/T w2 = ExpandString(ExpandAlias    ,w1) // 2. エイリアス展開
-	WAVE/T w3 = ExpandWave  (ExpandBrace    ,w2) // 3. ブレース展開
-	WAVE/T w4 = ExpandWave  (ExpandPath     ,w3) // 4. パス展開 
-	WAVE/T w5 = ExpandWave  (WeakLineSplit  ,w4) // 5. 行分割 
-	WAVE/T w6 = ExpandString(CompleteParen  ,w5) // 6. 括弧補完
-	WAVE/T w7 = ExpandString(RemoveEscapeSeq,w6) // 7. エスケープシーケンス除去 
-	Extract/T/FREE w7,w8,strlen(w7) // 空要素の除去
+	WAVE/T w1 = StrongLineSplit(input)           // 1. Line Split (strong)
+	WAVE/T w2 = ExpandString(ExpandAlias    ,w1) // 2. Alias Expansion
+	WAVE/T w3 = ExpandWave  (ExpandBrace    ,w2) // 3. Brace Expansion
+	WAVE/T w4 = ExpandWave  (ExpandPath     ,w3) // 4. Path Expansion
+	WAVE/T w5 = ExpandWave  (WeakLineSplit  ,w4) // 5. Line Split (weak)
+	WAVE/T w6 = ExpandString(CompleteParen  ,w5) // 6. Complete Parenthesis
+	WAVE/T w7 = ExpandString(RemoveEscapeSeq,w6) // 7. Remove Escape Sequence
+	Extract/T/FREE w7,w8,strlen(w7) // 8. Remove Blank Lines
 	return w8
 End
 static Function/WAVE ExpandString(str2str,w)
@@ -51,7 +50,7 @@ static Function/WAVE ExpandWave(str2wave,w)
 	return f
 End
 
-// 0,7 エスケープシーケンス処理 {{{1
+// 0,7 Escape Sequence {{{1
 static strconstant M ="|" // one character for masking
 static Function/S Mask(input)
 	String input
@@ -121,7 +120,7 @@ static Function/S ReplaceByRef(before,input,after,ref)
 End
 
 
-// 1,5 行分割 {{{1
+// 1,5 Line Split {{{1
 static Function/WAVE LineSplitBy(delim,input)
 	String delim,input
 	Variable pos = 0
@@ -148,7 +147,7 @@ static Function/WAVE WeakLineSplit(input)
 End
 
 
-// 2. エイリアス展開
+// 2. Alias Expansion
 static Function Alias(expr)
 	String expr
 	Duplicate/T/FREE CommandPanel#GetTextWave("alias") alias
@@ -198,7 +197,7 @@ static Function/S ExpandAlias(input)
 End
 
 
-// 3. ブレース展開 {{{1
+// 3. Brace Expansion
 static Function/WAVE ExpandBrace(input)
 	String input
 	input = ExpandNumberSeries(input)
@@ -285,7 +284,7 @@ static Function/S ExpandCharacterSeries(input)
 End
 
 
-// 4. パス展開
+// 4. Path Expansion
 Function/WAVE ExpandPath(input)
 	String input
 	String ref = mask(input)
@@ -295,12 +294,6 @@ Function/WAVE ExpandPath(input)
 	head=input[0,strlen(head)-1]
 	body=input[strlen(head),strlen(head)+strlen(body)-1]
 	tail=input[strlen(head)+strlen(body),inf]
-	
-//	print "=============================="
-//	print "INPUT",input
-//	print "PATH",body,ref_body
-//	print "=============================="
-
 	if(strlen(body))
 		body=SelectString(StringMatch(body,":"),body[0],GetDataFolder(1))+body[1,inf]
 		String fixed,expr,unfixed
@@ -357,7 +350,7 @@ Function/WAVE GlobFolders(path)
 End
 
 
-// 6. 括弧補完
+// 6. Complete Parenthesis
 static Function/S CompleteParen(input)
 	String input
 	String space,head,tail,s,comment
