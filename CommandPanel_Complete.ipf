@@ -4,13 +4,13 @@
 #include "CommandPanel_Interface"
 
 
-Function CommandPanel_Complete() //{{{
+Function CommandPanel_Complete()
 	String input=CommandPanel_GetLine(),head="",tail="",list=""
 	Make/FREE/T/N=0 f
 	if(GrepString(input,"^[^\"]*(\"[^\"]*\"[^\"]*)*\"[^\"]*$"))
 		// exception: string literal
 	elseif(GrepString(input,"^(.*;)? *([A-Za-z][A-Za-z0-9_]*)$"))
-		// operation / user function / alias complete
+		// operation / user function
 		SplitString/E="^(.*;)? *([A-Za-z][A-Za-z0-9_]*)$" input,head,tail
 		list=FunctionList(tail+"*",";","KIND:2")+OperationList(tail+"*",";","all")
 		Make/T/FREE/N=(ItemsInList(list)) func=head+StringFromList(p,list)
@@ -54,7 +54,6 @@ static Function/WAVE PathExpand(path)
 	String head="",tail=""
 	SplitString/E="(([^a-zA-Z_0-9]root)?(:([a-zA-Z][a-zA-Z_0-9]*|'[;:\"']+'))*:)(|[a-zA-Z]|[a-zA-Z][a-zA-Z_0-9]*|'[^:;\"']*)" path,head
 	tail = path[strlen(head),inf]
-	print ">>",head,">>",tail
 	if(DataFolderExists(head))
 		Make/T/FREE/N=(CountObjects(head,1)) waves    = PossiblyQuoteName(GetIndexedObjName(head,1,p))		
 		Make/T/FREE/N=(CountObjects(head,2)) variables= PossiblyQuoteName(GetIndexedObjName(head,2,p))		
