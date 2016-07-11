@@ -3,7 +3,7 @@
 ## 概要
 CommandPanel.ipfはIgor Proに新しいコマンド入力インターフェイスを提供します．
 
-![Demo](https://github.com/ryotako/igor-CommandPanel/Demo.gif)
+![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo%20.gif)
 
 - 入力を実行する前にbash風のエイリアス展開，ブレース展開，パス名展開を行います．
 - 入力に応じて操作関数名・関数名補完，パス名補完を行います．
