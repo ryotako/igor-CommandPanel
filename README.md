@@ -16,14 +16,14 @@ cp/O :wave :wave_copy // 実際には Duplicate/O :wave :wave_copy が実行さ�
 ```
 ### ブレース展開
 ``` 
-Make sample{A,B}_{1..2}
+NewDataFolder sample{A,B}_{1..2}
 ```
 以下のように展開されます．
 ```
-Make SampleA_1
-Make SampleA_2
-Make SampleB_1
-Make SampleB_2
+NewDataFolder sampleA_1
+NewDataFolder sampleA_2
+NewDataFolder sampleB_1
+NewDataFolder sampleB_2
 ```
 ### パス名展開
 パスの一部にワイルドカード*を使用することができます．
