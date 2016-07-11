@@ -2,6 +2,9 @@
 
 ## 概要
 CommandPanel.ipfはIgor Proに新しいコマンド入力インターフェイスを提供します．
+
+![](https://github.com/ryotako/igor-CommandPanel/wiki/Demo.gif)
+
 - 入力を実行する前にbash風のエイリアス展開，ブレース展開，パス名展開を行います．
 - 入力に応じて操作関数名・関数名補完，パス名補完を行います．
 - 出力結果を，指定した文字列で検索(その文字列を含むものに絞込み)することができます．
@@ -16,14 +19,14 @@ cp/O :wave :wave_copy // 実際には Duplicate/O :wave :wave_copy が実行さ�
 ```
 ### ブレース展開
 ``` 
-Make sample{A,B}_{1..2}
+NewDataFolder sample{A,B}_{1..2}
 ```
 以下のように展開されます．
 ```
-Make SampleA_1
-Make SampleA_2
-Make SampleB_1
-Make SampleB_2
+NewDataFolder sampleA_1
+NewDataFolder sampleA_2
+NewDataFolder sampleB_1
+NewDataFolder sampleB_2
 ```
 ### パス名展開
 パスの一部にワイルドカード*を使用することができます．
