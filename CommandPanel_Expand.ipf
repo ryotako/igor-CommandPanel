@@ -288,8 +288,8 @@ End
 Function/WAVE ExpandPath(input)
 	String input
 	String ref = mask(input)
-	String head,body,tail
-	SplitString/E="^(.*?)((root)?(:([a-zA-Z\*][a-zA-Z_0-9\*]*|'[^\"':;]'))+:?)(.*)$" ref,head,body,tail
+	String head,body,tail,s
+	SplitString/E="^(.*?)(((?<!\\w)root)?(:[a-zA-Z\*][\\w\*]*|:'[^:;'\"\*]+')+:?)(.*?)$" input,head,body,s,s,tail
 	String ref_body=body
 	head=input[0,strlen(head)-1]
 	body=input[strlen(head),strlen(head)+strlen(body)-1]
@@ -300,19 +300,24 @@ Function/WAVE ExpandPath(input)
 		SplitString/E="^(.*?:)([^:]*\*[^:]*)(.*)$" ref_body,fixed,expr,unfixed
 		if(strlen(expr))
 			if(strlen(unfixed))
-				if(cmpstr(expr,"**")==0) // Globstar
+				if(cmpstr(expr,"**")==0) // Globstar (folder)
 					WAVE/T f=GlobFolders(fixed); f = RemoveEnding((f)[strlen(fixed),inf],":")
 				else
-					Make/FREE/T/N=(CountObjects(fixed,4)) f=PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
+					Make/FREE/T/N=(CountObj(fixed,4)) f=PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
+				endif
+				String next
+				SplitString/E="(:[^*]+)$" unfixed,next
+				if(strlen(next))
+					Extract/T/FREE f,f,ObjExists(fixed+f+next)
 				endif
 			else
-				Make/T/FREE/N=(CountObjects(fixed,1)) waves    = PossiblyQuoteName(GetIndexedObjName(fixed,1,p))		
-				Make/T/FREE/N=(CountObjects(fixed,2)) variables= PossiblyQuoteName(GetIndexedObjName(fixed,2,p))		
-				Make/T/FREE/N=(CountObjects(fixed,3)) strings  = PossiblyQuoteName(GetIndexedObjName(fixed,3,p))		
-				if(cmpstr(expr,"**")==0) // Globstar
+				Make/T/FREE/N=(CountObj(fixed,1)) waves    = PossiblyQuoteName(GetIndexedObjName(fixed,1,p))		
+				Make/T/FREE/N=(CountObj(fixed,2)) variables= PossiblyQuoteName(GetIndexedObjName(fixed,2,p))		
+				Make/T/FREE/N=(CountObj(fixed,3)) strings  = PossiblyQuoteName(GetIndexedObjName(fixed,3,p))		
+				if(cmpstr(expr,"**")==0) // Globstar (general)
 					WAVE/T folders=GlobFolders(fixed); folders = RemoveEnding((folders)[strlen(fixed),inf],":")
 				else
-					Make/T/FREE/N=(CountObjects(fixed,4)) folders  = PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
+					Make/T/FREE/N=(CountObj(fixed,4)) folders  = PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
 				endif
 				Make/FREE/T/N=0 f; Concatenate/T/NP {folders,waves,variables,strings},f
 			endif
@@ -321,7 +326,7 @@ Function/WAVE ExpandPath(input)
 			if(N)
 				Make/FREE/T/N=0 buf
 				for(i=0;i<N;i+=1)
-					Concatenate/T/NP {ExpandPath(head+fixed+f[i]+unfixed+tail)},buf
+					Concatenate/T/NP {ExpandPath(head+fixed+f[i]+unfixed+tail)},buf					
 				endfor
 				return buf
 			else
@@ -347,6 +352,18 @@ Function/WAVE GlobFolders(path)
 		Concatenate/T/NP {base, GlobFolders(base)},f
 	endfor
 	return f
+End
+Function CountObj(path,type)
+	String path; Variable type
+	Variable v=CountObjects(path,type)
+	return numtype(v) ? 0 : v
+End
+Function ObjExists(path)
+	String path
+	WAVE w=$path
+	NVAR n=$path
+	SVAR s=$path
+	return DataFolderExists(path) || WaveExists(w) || NVAR_Exists(n) || SVAR_Exists(s)
 End
 
 
