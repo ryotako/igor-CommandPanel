@@ -9,9 +9,9 @@ Function CommandPanel_Complete()
 	Make/FREE/T/N=0 f
 	if(GrepString(input,"^[^\"]*(\"[^\"]*\"[^\"]*)*\"[^\"]*$"))
 		// exception: string literal
-	elseif(GrepString(input,"^(.*;)? *([A-Za-z][A-Za-z0-9_]*)$"))
+	elseif(GrepString(input,"^(.*;)? *([A-Za-z]\\w*)$"))
 		// operation / user function
-		SplitString/E="^(.*;)? *([A-Za-z][A-Za-z0-9_]*)$" input,head,tail
+		SplitString/E="(.*;)? *([A-Za-z]\\w*)$" input,head,tail
 		list=FunctionList(tail+"*",";","KIND:2")+OperationList(tail+"*",";","all")
 		Make/T/FREE/N=(ItemsInList(list)) func=head+StringFromList(p,list)
 		// alias
@@ -20,14 +20,13 @@ Function CommandPanel_Complete()
 		//Concatenate/T/NP {alias,func},f // Concatenate/T is unavailable for some reasone... 
 		Variable Nf=DimSize(func,0), Na=DimSize(alias,0)
 		Make/FREE/T/N=(Nf+Na) f = SelectString(p<Na,func[p-Na],alias[p]) 
-	elseif(GrepString(input,"([^a-zA-Z_0-9]root)?(:([a-zA-Z][a-zA-Z_0-9]*|'[;:\"']+'))*:(|[a-zA-Z]|[a-zA-Z][a-zA-Z_0-9]*|'[^:;\"']*)$"))
-		// path
-		SplitString/E="(.*?)(([^a-zA-Z_0-9]root)?(:([a-zA-Z][a-zA-Z_0-9]*|'[;:\"']+'))*:(|[a-zA-Z]|[a-zA-Z][a-zA-Z_0-9]*|'[^:;\"']*))$" input,head,tail
+	elseif(GrepString(input,"(.*?)(((?<!\\w)root)?:([a-zA-Z]\\w*:|'[^:;'\"]+':)*([a-zA-Z]\\w*|'[^:;'\"]*)?)$"))
+		SplitString/E="(.*?)(((?<!\\w)root)?:([a-zA-Z]\\w*:|'[^:;'\"]+':)*([a-zA-Z]\\w*|'[^:;'\"]*)?)$" input,head,tail
 		WAVE/T f=PathExpand(tail)
 		f=head+f
 	else
 		// function
-		SplitString/E="^(.*?)([A-Za-z][A-Za-z0-9_]*)$" input,head,tail
+		SplitString/E="(.*?)([A-Za-z][A-Za-z0-9_]*)$" input,head,tail
 		if(strlen(tail))
 			list=FunctionList(tail+"*",";","KIND:2")+FunctionList(tail+"*",";","KIND:1")
 			Make/T/FREE/N=(ItemsInList(list)) f=head+StringFromList(p,list)
@@ -51,9 +50,8 @@ End
 
 static Function/WAVE PathExpand(path)
 	String path
-	String head="",tail=""
-	SplitString/E="(([^a-zA-Z_0-9]root)?(:([a-zA-Z][a-zA-Z_0-9]*|'[;:\"']+'))*:)(|[a-zA-Z]|[a-zA-Z][a-zA-Z_0-9]*|'[^:;\"']*)" path,head
-	tail = path[strlen(head),inf]
+	String head="",tail="",s
+	SplitString/E="(((?<!\\w)root)?:([a-zA-Z]\\w*:|'[^:;'\"]+':)*)([a-zA-Z]\\w*|'[^:;'\"]*)?$" path,head,s,s,tail
 	if(DataFolderExists(head))
 		Make/T/FREE/N=(CountObjects(head,1)) waves    = PossiblyQuoteName(GetIndexedObjName(head,1,p))		
 		Make/T/FREE/N=(CountObjects(head,2)) variables= PossiblyQuoteName(GetIndexedObjName(head,2,p))		
