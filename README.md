@@ -1,6 +1,6 @@
 # igor-CommandPanel
 
-CommandPanel.ipf provides an alternative commandline interface fpr Igor Pro．
+CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 
 ![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo%20.gif)
 
