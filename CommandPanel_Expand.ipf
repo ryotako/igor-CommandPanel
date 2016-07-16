@@ -27,7 +27,7 @@ End
 static Function/WAVE Expand(input)
 	String input
 	InitAlias()
-	WAVE/T w1 = StrongLineSplit(input)            // 1. Line Split (strong)
+	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
 	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
 	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion
 	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
@@ -317,7 +317,11 @@ Function/WAVE ExpandPath(input)
 		if(strlen(expr))
 			if(strlen(unfixed))
 				if(cmpstr(expr,"**")==0) // Globstar (folder)
-					WAVE/T f=GlobFolders(fixed); f = RemoveEnding((f)[strlen(fixed),inf],":")
+					WAVE/T f=GlobFolders(fixed)
+					f = RemoveEnding((f)[strlen(fixed),inf],":")
+					if(cmpstr(unfixed,":"))
+						InsertPoints DimSize(f,0),1,f
+					endif
 				else
 					Make/FREE/T/N=(CountObj(fixed,4)) f=PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
 				endif
@@ -342,7 +346,8 @@ Function/WAVE ExpandPath(input)
 			if(N)
 				Make/FREE/T/N=0 buf
 				for(i=0;i<N;i+=1)
-					Concatenate/T/NP {ExpandPath(head+fixed+f[i]+unfixed+tail)},buf					
+					String arg = head+SelectString(strlen(f[i]),RemoveEnding(fixed,":"),fixed)+f[i]+unfixed+tail
+					Concatenate/T/NP {ExpandPath(arg)},buf
 				endfor
 				return buf
 			else
