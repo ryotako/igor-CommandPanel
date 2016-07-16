@@ -27,13 +27,13 @@ End
 static Function/WAVE Expand(input)
 	String input
 	InitAlias()
-	WAVE/T w1 = StrongLineSplit(input)           // 1. Line Split (strong)
-	WAVE/T w2 = ExpandString(ExpandAlias    ,w1) // 2. Alias Expansion
-	WAVE/T w3 = ExpandWave  (ExpandBrace    ,w2) // 3. Brace Expansion
-	WAVE/T w4 = ExpandWave  (ExpandPath     ,w3) // 4. Path Expansion
-	WAVE/T w5 = ExpandWave  (WeakLineSplit  ,w4) // 5. Line Split (weak)
-	WAVE/T w6 = ExpandString(CompleteParen  ,w5) // 6. Complete Parenthesis
-	WAVE/T w7 = ExpandString(RemoveEscapeSeq,w6) // 7. Remove Escape Sequence
+	WAVE/T w1 = StrongLineSplit(input)            // 1. Line Split (strong)
+	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
+	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion
+	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
+	WAVE/T w5 = ExpandWave  (WeakLineSplit    ,w4) // 5. Line Split (weak)
+	WAVE/T w6 = ExpandString(CompleteParen    ,w5) // 6. Complete Parenthesis
+	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Sequence
 	Extract/T/FREE w7,w8,strlen(w7) // 8. Remove Blank Lines
 	return w8
 End
@@ -93,14 +93,28 @@ static Function/S MaskAfter(str,input)
 		return input	
 	endif
 End
-static Function/S RemoveEscapeSeq(input)
+static Function/S RemoveEscapeSeqBrace(input)
+	String input
+	String ref
+	ref = input
+	ref = ReplaceString("\\\\",ref,M+M)
+	ref = ReplaceString("\\`" ,ref,M+M)
+	input = ReplaceByRef("\\{",input,"{",ref)
+	ref = input
+	ref = ReplaceString("\\\\",ref,M+M)
+	ref = ReplaceString("\\`" ,ref,M+M)
+	input = ReplaceByRef("\\}",input,"}",ref)
+	ref = input
+	ref = ReplaceString("\\\\",ref,M+M)
+	ref = ReplaceString("\\`" ,ref,M+M)
+	input = ReplaceByRef("\\,",input,",",ref)
+	return input
+End
+static Function/S RemoveEscapeWhole(input)
 	String input
 	String ref = input
 	ref = ReplaceString("\\\\",input,M+M)
 	ref = ReplaceString("\\`" ,input,M+M)
-	input = ReplaceByRef("\\{",input,"{",ref)
-	input = ReplaceByRef("\\}",input,"}",ref)
-	input = ReplaceByRef("\\,",input,",",ref)
 	input = ReplaceByRef("`",input,"",ref)	
 	input = ReplaceString("\\`",input,"`")
 	return input
@@ -202,7 +216,9 @@ static Function/WAVE ExpandBrace(input)
 	String input
 	input = ExpandNumberSeries(input)
 	input = ExpandCharacterSeries(input)
-	return ExpandSeries(input)
+	WAVE/T w = ExpandSeries(input)
+	w = RemoveEscapeSeqBrace(w)
+	return w
 End
 
 static Function/WAVE ExpandSeries(input)
@@ -289,7 +305,7 @@ Function/WAVE ExpandPath(input)
 	String input
 	String ref = mask(input)
 	String head,body,tail,s
-	SplitString/E="^(.*?)(((?<!\\w)root)?(:[a-zA-Z\*][\\w\*]*|:'[^:;'\"\*]+')+:?)(.*?)$" input,head,body,s,s,tail
+	SplitString/E="^(.*?)(((?<!\\w)root)?(:[a-zA-Z\*][\\w\*]*|:'[^:;'\"]+')+:?)(.*?)$" input,head,body,s,s,tail
 	String ref_body=body
 	head=input[0,strlen(head)-1]
 	body=input[strlen(head),strlen(head)+strlen(body)-1]
@@ -321,7 +337,7 @@ Function/WAVE ExpandPath(input)
 				endif
 				Make/FREE/T/N=0 f; Concatenate/T/NP {folders,waves,variables,strings},f
 			endif
-			Extract/T/FREE f,f,StringMatch(f,expr)
+			Extract/T/FREE f,f,StringMatch(f,expr)||StringMatch(f,"'"+expr+"'")
 			Variable i,N=DimSize(f,0)
 			if(N)
 				Make/FREE/T/N=0 buf
