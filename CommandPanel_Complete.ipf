@@ -26,7 +26,7 @@ Function CommandPanel_Complete()
 		f=head+f
 	else
 		// function
-		SplitString/E="(.*?)([A-Za-z][A-Za-z0-9_]*)$" input,head,tail
+		SplitString/E="(.*?)((?<!#)[A-Za-z][A-Za-z0-9_]*)$" input,head,tail
 		if(strlen(tail))
 			list=FunctionList(tail+"*",";","KIND:2")+FunctionList(tail+"*",";","KIND:1")
 			Make/T/FREE/N=(ItemsInList(list)) f=head+StringFromList(p,list)
