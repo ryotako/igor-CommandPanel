@@ -29,11 +29,11 @@ static Function/WAVE Expand(input)
 	InitAlias()
 	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
 	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
-	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion
+	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove ¥ from ¥{ ¥, ¥})
 	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
 	WAVE/T w5 = ExpandWave  (WeakLineSplit    ,w4) // 5. Line Split (weak)
 	WAVE/T w6 = ExpandString(CompleteParen    ,w5) // 6. Complete Parenthesis
-	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Sequence
+	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Char ¥
 	Extract/T/FREE w7,w8,strlen(w7) // 8. Remove Blank Lines
 	return w8
 End
