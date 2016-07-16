@@ -6,8 +6,8 @@ CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 
 ## Features
 - bash-like alias expansion, brace expansion, and pathname expansion.
-- copmplete operation, function, data folder, wave, variable, string name.
-- filtering the output with words (regular expressions)．
+- complete operation, function, data folder, wave, variable, string name.
+- filter outputs or completion candidates with words (regular expressions)．
 
 ## Expansion
 Execute commands by pressing `Enter`．If one puss `Enter` without inpupt, the command history is displayed．
@@ -50,9 +50,9 @@ PrintSomething test       // When the function take just a string parameter, you
 
 ## Completion
 Your input is completed by pushing `Shift+Enter`.
-Thes procedure complete operation and function name. Words beginning with : are completed as pathnames.
+This procedure complete operation and function name. Words beginning with : are completed as pathnames.
 When you push `Shift+Enter` without input, the output or complete candidates are scrolled down. (You can scroll up with `Alt+Enter` in Mac.)
 
 ## Filtering
-You can filtering the outputs or completion candidates by pushing `Shift+Enter` with an input beginning with a blank character ` `. 
+You can filter the outputs or completion candidates by pushing `Shift+Enter` with an input beginning with a blank character ` `. 
 Regular expressions can be used for this filtering.
