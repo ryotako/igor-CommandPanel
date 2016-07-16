@@ -25,6 +25,9 @@ Function CommandPanel_Execute()
 
 	// Execute
 	WAVE/T commands = CommandPanel_Expand(input)
+	if(DimSize(commands,0)==0)
+		Make/FREE/T commands = {input}
+	endif
 	Variable ref,i,N=DimSize(commands,0); String output="",error=""
 	for(i=0;i<N;i+=1)
 		print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91)+commands[i]+"\r"
