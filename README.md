@@ -2,7 +2,7 @@
 
 CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 
-![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo%20.gif)
+![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo.gif)
 
 ## Features
 - bash-like alias expansion, brace expansion, and pathname expansion.
