@@ -1,7 +1,7 @@
 #ifndef INCLUDED_COMMAND_PANEL_EXP
 #define INCLUDED_COMMAND_PANEL_EXP
 #pragma ModuleName=CommandPanelExp
-#include "CommandPanel_Interface"
+#include ":CommandPanel_Interface"
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -370,7 +370,7 @@ Function/WAVE GlobFolders(path)
 	Variable i,N=DimSize(sub,0); Make/FREE/T/N=0 f
 	for(i=0;i<N;i+=1)
 		Make/FREE/T base={sub[i]}
-		Concatenate/T/NP {base, GlobFolders(base)},f
+		Concatenate/T/NP {base, GlobFolders(base[0])},f
 	endfor
 	return f
 End
