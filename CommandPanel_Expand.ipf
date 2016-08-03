@@ -2,6 +2,7 @@
 #define INCLUDED_COMMAND_PANEL_EXP
 #pragma ModuleName=CommandPanelExp
 #include ":CommandPanel_Interface"
+#include ":lib:writer"
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -14,10 +15,10 @@ Function CommandPanel_Alias(input)
 End
 
 // Protoyype Functions
-Function/S CommandPanel_ExpandProtoType1(input)
-	String input
-	return input
-End
+//Function/S CommandPanel_ExpandProtoType1(input)
+//	String input
+//	return input
+//End
 Function/WAVE CommandPanel_ExpandProtoType2(input)
 	String input
 	Make/FREE/T f={input}; return f
@@ -27,66 +28,20 @@ End
 static Function/WAVE Expand(input)
 	String input
 	InitAlias()
-	bind(return(input),StrongLineSplit)
+	return bind(bind(bind(return(input),StrongLineSplit),ExpandBrace),WeakLineSplit)
 //	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
 //	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
-//	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove ¥ from ¥{ ¥, ¥})
+//	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove \ from \{ \, \})
 //	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
 //	WAVE/T w5 = ExpandWave  (WeakLineSplit    ,w4) // 5. Line Split (weak)
 //	WAVE/T w6 = ExpandString(CompleteParen    ,w5) // 6. Complete Parenthesis
-//	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Char ¥
+//	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Char \\
 //	Extract/T/FREE w7,w8,strlen(w7) // 8. Remove Blank Lines
 //	return w8
 End
 
 
-static Function length(w)
-	WAVE/T w
-	return WaveExists(w) ? DimSize(w,0) : 0
-End
-static Function null(w)
-	WAVE/T w
-	return !length(w)
-End
-
-static Function/S head(w)
-	WAVE/T w
-	if(null(w))
-		return ""
-	endif
-	return w[0]
-End
-static Function/WAVE tail(w)
-	WAVE/T w
-	if(null(w))
-		return void()
-	endif
-	Duplicate/FREE/T w,ww
-	DeletePoints 0,1,ww
-	return ww
-End
-static Function/WAVE cons(s,w)
-	String s; WAVE/T w
-	if(null(w))
-		return return(s)
-	endif
-	Duplicate/FREE/T w,ww; InsertPoints 0,1,ww; ww[0]=s; return ww
-End
-
-static Function/WAVE void()
-	Make/FREE/T/N=0 w; return w
-End
-
-static Function/WAVE concat(w1,w2)
-	WAVE/T w1,w2
-	if(null(w1) && null(w2))
-		return void()
-	elseif(null(w1))
-		return cons(head(w2),tail(w2))
-	endif
-	return cons(head(w1),concat(tail(w1),w2))
-End
-static Function/WAVE split(s,expr)
+Function/WAVE split(s,expr)
 	String s,expr
 	String buf; SplitString/E=expr s,buf
 	Variable pos = strsearch(s,buf,0), len=strlen(buf)
@@ -95,7 +50,7 @@ static Function/WAVE split(s,expr)
 	endif
 	return cons(s[0,pos-1],cons(buf,cons(s[pos+len,inf],void())))
 End
-static Function/WAVE SplitAs(s,w)
+Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	if(null(w))
 		return void()
@@ -104,17 +59,6 @@ static Function/WAVE SplitAs(s,w)
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
 End
 
-static Function/WAVE bind(w,f)
-	WAVE/T w; FUNCREF CommandPanel_Expand f
-	if(null(w))
-		return void()
-	endif
-	return concat(f(head(w)),bind(tail(w),f))
-End
-static Function/WAVE return(s)
-	String s
-	Make/FREE/T w={s}; return w
-End
 
 
 // 0,7 Escape Sequence {{{1
