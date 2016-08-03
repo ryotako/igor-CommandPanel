@@ -11,7 +11,7 @@ Function/WAVE CommandPanel_Expand(input)
 End
 Function CommandPanel_Alias(input)
 	String input
-	return Alias(input)
+	Alias(input)
 End
 
 // Protoyype Functions
@@ -27,8 +27,7 @@ End
 // Functions
 static Function/WAVE Expand(input)
 	String input
-	InitAlias()
-	return bind(bind(bind(bind(return(input),StrongLineSplit),ExpandBrace),WeakLineSplit),CompleteParen)
+	return bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),WeakLineSplit),CompleteParen)
 //	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
 //	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
 //	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove \ from \{ \, \})
@@ -44,7 +43,6 @@ End
 Function/WAVE split(s,expr)
 	String s,expr
 	String buf; SplitString/E=expr s,buf
-	//if(strlen(buf)==0)
 	if(!GrepString(s,expr))
 		return void()
 	endif
@@ -62,6 +60,13 @@ End
 Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
+End
+Function/S join(w)
+	WAVE/T w
+	if(null(w))
+		return ""
+	endif
+	return head(w)+join(tail(w))
 End
 
 // 0,7 Escape Sequence {{{1
@@ -168,56 +173,57 @@ End
 
 
 // 2. Alias Expansion
-static Function Alias(expr)
-	String expr
-	Duplicate/T/FREE CommandPanel#GetTextWave("alias") alias
-	String lhs="",rhs=""
-	if(GrepString(expr,"^ *$"))
-		Variable i,N=DimSize(alias,0); Duplicate/FREE/T alias f
-		for(i=0;i<N;i+=1)
-			SplitString/E="^([a-zA-Z][a-zA-Z_0-9]*): *(.*)$" alias[i],lhs,rhs
-			f[i] = "alias "+lhs+"="+rhs
-		endfor
-		CommandPanel_SetBuffer(f)
-	else
-		SplitString/E="([a-zA-Z][a-zA-Z0-9_]*) *= *([^ ].*)?" expr,lhs,rhs
-		Extract/T/FREE alias,f,!StringMatch(alias,lhs+":*")
-		if(strlen(rhs))
-			InsertPoints 0,1,f; f[0]=lhs+":"+rhs
-		endif
-		Sort f,f
-		CommandPanel#SetTextWave("alias",f)
-	endif
-End
-static Function InitAlias()
-	WAVE/T w=CommandPanel#GetTextWave("alias")
-	if(DimSize(w,0)<1)
-		Alias("alias=CommandPanelExp#Alias")
-	endif
-End
 static Function/WAVE ExpandAlias(input)
 	String input
-	String ref = mask(input)
-	
-
-//	WAVE/T alias=CommandPanel#GetTextWave("alias")
-//	Variable i,N=ItemsInList(ref,";"); String out=""
-//	for(i=0;i<N;i+=1)
-//		Variable pos=FindListItem(StringFromList(i,ref,";"),ref,";")
-//		Variable len=strlen(StringFromList(i,ref,";"))
-//		String line=input[pos,pos+len-1],space,head,tail
-//		SplitString/E="( *)([A-Za-z][A-Za-z0-9_]*)(.*)" line,space,head,tail
-//		Extract/FREE/T alias,f,strlen(StringByKey(head,alias))
-//		if(null(f))
-//			out += line+";"
-//		else
-//			head=ExpandAlias(StringByKey(head,f[0]))
-//			out += space+head+tail + ";"
-//		else
-//		endif
-//	endfor
-//	return RemoveEnding(out,";")
+	WAVE/T w=SplitAs(input,split(mask(input),"(;)"))// line, ;, lines
+	if(null(w))
+		return ExpandAlias_(input)
+	endif
+	return return( join(concat(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
+static Function/WAVE ExpandAlias_(input) // one line
+	String input
+	WAVE/T w=split(input,"^\\s*([a-zA-Z]\\w*)") //space,alias,args
+	if(null(w))
+		return return(input)
+	endif
+	Duplicate/FREE/T GetAliasWave(),alias
+	Extract/FREE/T alias,alias,StringMatch(alias,w[1]+"=*")
+	return return(w[0]+SelectString(null(alias),(head(alias))[strlen(w[1])+1,inf],w[1])+w[2])
+End
+
+Function/WAVE GetAliasWave()
+	WAVE/T w=root:Packages:CommandPanel:alias
+	if(WaveExists(w))
+		return w
+	endif
+	return void()
+End
+Function/WAVE SetAliasWave(w)
+	WAVE/T w
+	if(WaveExists(w) && !WaveRefsEqual(w,GetAliasWave()))
+		NewDataFolder/O root:Packages
+		NewDataFolder/O root:Packages:CommandPanel
+		Duplicate/O/T w root:Packages:CommandPanel:alias
+	endif
+End
+
+static Function/WAVE Alias(expr)
+	String expr
+	Duplicate/T/FREE GetAliasWave() alias
+	WAVE/T w=SplitAs(mask(expr),split(expr,"^ *\\w+ *(=)")) //alias,equal,command
+	if(null(w))
+		return void()
+	endif
+	if(strlen(trim(w[2]))==0)
+		return alias
+	endif
+	Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[0])+"=*")
+	InsertPoints 0,1,alias; alias[0] = trim(w[0])+"="+trim(w[2])
+	SetAliasWave(alias)
+	return void()
+End
+
 
 // 3. Brace Expansion
 static Function/WAVE ExpandBrace(input)
@@ -274,7 +280,6 @@ static Function/WAVE ExpandCharacterSeries(input)
 	s=RemoveEnding(s,",")
 	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+head(ExpandCharacterSeries(w[2])))
 End
-
 
 
 // 4. Path Expansion
@@ -371,7 +376,7 @@ static Function/WAVE CompleteParen(input)
 		return return(input)
 	endif
 	String info=FunctionInfo(w[1])
-	WAVE/T arg=split(w[2],"^\\s*(.*?)(\\s*?//.*)?$")// space, args, comment
+	WAVE/T arg=split(w[2],"^\\s*(.*?)(\\s*(//.*)?)$")// space, args, comment
 	if(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(arg,"^ *\".*\" *$"))
 		arg[1]="\""+arg[1]+"\""
 	endif

@@ -10,46 +10,55 @@ static Function test()
 	String f
 	print "test: start"
 
-	f="CommandPanelExp#StrongLineSplit"
-	testw($f,"1;2;3",{"1;2;3"})
+	KillWaves/Z root:Packages:CommandPanel:alias
+	f="CommandPanelExp#Alias"
+	testl($f,"","")
+	testl($f,"a=alias","")
+	testl($f,"t0=test0" ,"")
+	testl($f,"t1=test1" ,"")
+
+
+	f="CommandPanelExp#Expand"
+	testl($f,"1;2;3"  ,"1;2;3")
 	testl($f,"1;;2;;3","1;2;3")
 	testw($f,"1;;\"2;;3\"",{"1","\"2;;3\""})
 
-	f="CommandPanelExp#WeakLineSplit"
-	testl($f,"1;2;3"  ,"1;2;3")
-	testl($f,"1;;2;;3","1;;2;;3")
+	testl($f,"a","alias")	
+	testl($f,"a ; a","alias ; alias")
+	testl($f,"a ; t0","alias ; test0()")
+	testl($f,"t0 ; t0","test0() ; test0()")
+	tests($f,"t0 //; t0","test0() //; t0")
+	testl($f,"t1 ; t0","test1(\"\") ; test0()")
+	testl($f,"t1 test ; t0","test1(\"test\") ; test0()")
+	testl($f,"t0 a,b,c//d","test0(a,b,c)//d")
 
 
-	f="CommandPanelExp#ExpandNumberSeries"
-	tests($f,"{1..3}","{1,2,3}")
-	tests($f,"{-1..3}","{-1,0,1,2,3}")
-	tests($f,"{1..9..2}" ,"{1,3,5,7,9}")
-	tests($f,"{1..9..+2}","{1,3,5,7,9}")
-	tests($f,"{1..9..-2}","{1,3,5,7,9}")
-	tests($f,"{1..3..0}","{1,2,3}")
-	tests($f,"{3..1}","{3,2,1}")
-	tests($f,"{3..-1}","{3,2,1,0,-1}")
-
-	f="CommandPanelExp#ExpandCharacterSeries"
-	tests($f,"{a..c}","{a,b,c}")
-
-	f="CommandPanelExp#ExpandSeries"
+	testl($f,"{1..3}","1;2;3")
+	testl($f,"{-1..3}","-1;0;1;2;3")
+	testl($f,"{1..9..2}" ,"1;3;5;7;9")
+	testl($f,"{1..9..+2}","1;3;5;7;9")
+	testl($f,"{1..9..-2}","1;3;5;7;9")
+	testl($f,"{1..3..0}","1;2;3")
+	testl($f,"{3..1}","3;2;1")
+	testl($f,"{3..-1}","3;2;1;0;-1")
+	testl($f,"{a..c}","a;b;c")
 	testl($f,"{a,b,{c}}","a;b;{c}")
 	testl($f,"{aa,bb,cc}","aa;bb;cc")
 	testl($f,"{a,b,c}","a;b;c")
 	testl($f,"{a}","{a}")
 	testl($f,"{}","{}")
-
-
-	f="CommandPanelExp#ExpandBrace"
-	testl($f,"{a,b,c}","a;b;c")
-	testl($f,"{a}","{a}")
-	testl($f,"{}","{}")
 	testl($f,"{a,b,{c,d}}","a;b;c;d")
-	testl($f,"{a,b,{c}}","a;b;{c}")
 
 	print "end"
 End
+
+override Function test0()
+End 
+override Function test1(s)
+	String s
+End 
+
+
 
 static Function tests(f,s_src,s_ans)
 	FUNCREF CommandPanelExpTest_ProtoType f
@@ -68,7 +77,7 @@ static Function testw(f,s_src,w_ans)
 	WAVE/T expanded = f(s_src)
 	if(DimSize(w_ans,0) == DimSize(expanded,0))
 		Make/FREE/N=(DimSize(w_ans,0)) w=abs(cmpstr(w_ans,expanded))
-		if(WaveMax(w)==0)
+		if(WaveMax(w)==0 || DimSize(w_ans,0)==0)
 			return NaN
 		endif
 	endif
