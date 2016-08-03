@@ -33,6 +33,16 @@ static Function test()
 
 	f="CommandPanelExp#ExpandSeries"
 	testl($f,"{a,b,c}","a;b;c")
+	testl($f,"{a}","{a}")
+	testl($f,"{}","{}")
+
+
+	f="CommandPanelExp#ExpandBrace"
+	testl($f,"{a,b,c}","a;b;c")
+	testl($f,"{a}","{a}")
+	testl($f,"{}","{}")
+	testl($f,"{a,b,{c,d}}","a;b;c;d")
+	testl($f,"{a,b,{c}}","a;b;{c}")
 
 
 End

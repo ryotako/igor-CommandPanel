@@ -79,7 +79,9 @@ End
 
 static Function/WAVE concat(w1,w2)
 	WAVE/T w1,w2
-	if(null(w1))
+	if(null(w1) && null(w2))
+		return void()
+	elseif(null(w1))
 		return cons(head(w2),tail(w2))
 	endif
 	return cons(head(w1),concat(tail(w1),w2))
@@ -93,7 +95,14 @@ static Function/WAVE split(s,expr)
 	endif
 	return cons(s[0,pos-1],cons(buf,cons(s[pos+len,inf],void())))
 End
-
+static Function/WAVE SplitAs(s,w)
+	String s; WAVE/T w
+	if(null(w))
+		return void()
+	endif
+	Variable len=strlen(head(w))
+	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
+End
 
 static Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF CommandPanel_Expand f
@@ -271,23 +280,22 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	WAVE/T w=split(mask(input),"({([^{}]|(?1))*,(?2)*})")
+	WAVE/T w=SplitAs(input,split(mask(input),"({([^{}]|(?1))*,(?2)*})"))
 	if(null(w))
 		return return(input)
 	endif
-	String head=input[0,strlen(w[0])-1]
-	String body=input[strlen(w[0]),strlen(w[0]+w[1])-1]
-	String tail=input[strlen(w[0])+strlen(w[1]),inf]
-	WAVE/T w=ExpandSeries_(body[1,strlen(body)-2]); w=head+w+tail
-	return bind(w,ExpandSeries)
+	WAVE/T ww=ExpandSeries_((w[1])[1,strlen(w[1])-2]); ww=w[0]+ww+w[2]
+	return bind(ww,ExpandSeries)
 End
-static FUnction/WAVE ExpandSeries_(body) // inside of {}
+static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
-	WAVE/T w=split(mask(body),"^(([^{},]|({([^{}]*|(?3))}))*)")
+	WAVE/T w=SplitAs(body,split(mask(body),"^(([^{},]|({([^{}]*|(?3))}))*)"))
 	if(null(w))
 		return void()
+	elseif(StringMatch(w[2],","))
+		return cons(body[0,strlen(w[1])-1],return(""))
 	endif
-	return cons(body[0,strlen(w[1])-1] , ExpandSeries_(body[strlen(w[1])+1,inf]))
+	return cons(body[0,strlen(w[1])-1] , ExpandSeries_(body[strlen(w[1]+","),inf]))
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
@@ -403,9 +411,7 @@ Function CountObj(path,type)
 End
 Function ObjExists(path)
 	String path
-	WAVE w=$path
-	NVAR n=$path
-	SVAR s=$path
+	WAVE w=$path; NVAR n=$path; SVAR s=$path
 	return DataFolderExists(path) || WaveExists(w) || NVAR_Exists(n) || SVAR_Exists(s)
 End
 
