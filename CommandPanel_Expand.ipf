@@ -40,30 +40,32 @@ static Function/WAVE Expand(input)
 End
 
 
-Function length(w)
+static Function length(w)
 	WAVE/T w
 	return WaveExists(w) ? DimSize(w,0) : 0
 End
-Function null(w)
+static Function null(w)
 	WAVE/T w
 	return !length(w)
 End
 
-Function/S head(w)
+static Function/S head(w)
 	WAVE/T w
 	if(null(w))
 		return ""
 	endif
 	return w[0]
 End
-Function/WAVE tail(w)
+static Function/WAVE tail(w)
 	WAVE/T w
 	if(null(w))
 		return void()
 	endif
-	Duplicate/FREE/T/R=[1,inf] w,ww; return ww
+	Duplicate/FREE/T w,ww
+	DeletePoints 0,1,ww
+	return ww
 End
-Function/WAVE cons(s,w)
+static Function/WAVE cons(s,w)
 	String s; WAVE/T w
 	if(null(w))
 		return return(s)
@@ -71,18 +73,18 @@ Function/WAVE cons(s,w)
 	Duplicate/FREE/T w,ww; InsertPoints 0,1,ww; ww[0]=s; return ww
 End
 
-Function/WAVE void()
+static Function/WAVE void()
 	Make/FREE/T/N=0 w; return w
 End
 
-Function/WAVE concat(w1,w2)
+static Function/WAVE concat(w1,w2)
 	WAVE/T w1,w2
 	if(null(w1))
 		return cons(head(w2),tail(w2))
 	endif
 	return cons(head(w1),concat(tail(w1),w2))
 End
-Function/WAVE split(s,expr)
+static Function/WAVE split(s,expr)
 	String s,expr
 	String buf; SplitString/E=expr s,buf
 	Variable pos = strsearch(s,buf,0), len=strlen(buf)
@@ -93,14 +95,14 @@ Function/WAVE split(s,expr)
 End
 
 
-Function/WAVE bind(w,f)
-	WAVE/T w; FUNCREF return f
+static Function/WAVE bind(w,f)
+	WAVE/T w; FUNCREF CommandPanel_Expand f
 	if(null(w))
-		Make/FREE/T/N=0 ww; return ww
+		return void()
 	endif
 	return concat(f(head(w)),bind(tail(w),f))
 End
-Function/WAVE return(s)
+static Function/WAVE return(s)
 	String s
 	Make/FREE/T w={s}; return w
 End
@@ -269,46 +271,23 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	String head,body,tail,s
-	SplitString/E="^(.*?)({([^{}]|(?2))*,(?3)*})(.*)$" mask(input),head,body,s,s,s,s,s,tail
-	head=input[0,strlen(head)-1]
-	body=input[strlen(head),strlen(head)+strlen(body)-1]
-	tail=input[strlen(head)+strlen(body),inf]
-//	print "=============================="
-//	print "INPUT:"+input
-//	print "HEAD :"+head
-//	print "BODY :"+body
-//	print "TAIL :"+tail
-//	print "=============================="
-	if(strlen(body))
-		body = body[1,strlen(body)-2]
-		String ref=mask(body)
-		Make/FREE/T/N=0 f
-		do
-			String fst,rst
-			SplitString/E="^(([^{},]|({([^{}]*|(?3))}))*)" ref,fst
-			rst = body[strlen(fst)+1,inf]
-			Variable len=strlen(fst)
-			if(len)
-				InsertPoints DimSize(f,0),1,f
-				f[inf] = body[0,len-1]
-				body=body[len+strlen(","),inf]
-				ref =ref [len+strlen(","),inf]
-			else
-				break
-			endif
-		while(1)
-		f = head+f+tail
-		Variable j,Nj=DimSize(f,0)
-		Make/FREE/T/N=0 buf
-		for(j=0;j<Nj;j+=1)
-			Concatenate/T/NP {ExpandSeries(f[j])},buf
-		endfor
-		return buf
-	else
-		Make/FREE/T f={input}
-		return f
+	WAVE/T w=split(mask(input),"({([^{}]|(?1))*,(?2)*})")
+	if(null(w))
+		return return(input)
 	endif
+	String head=input[0,strlen(w[0])-1]
+	String body=input[strlen(w[0]),strlen(w[0]+w[1])-1]
+	String tail=input[strlen(w[0])+strlen(w[1]),inf]
+	WAVE/T w=ExpandSeries_(body[1,strlen(body)-2]); w=head+w+tail
+	return bind(w,ExpandSeries)
+End
+static FUnction/WAVE ExpandSeries_(body) // inside of {}
+	String body
+	WAVE/T w=split(mask(body),"^(([^{},]|({([^{}]*|(?3))}))*)")
+	if(null(w))
+		return void()
+	endif
+	return cons(body[0,strlen(w[1])-1] , ExpandSeries_(body[strlen(w[1])+1,inf]))
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
@@ -340,6 +319,7 @@ static Function/WAVE ExpandCharacterSeries(input)
 	s=RemoveEnding(s,",")
 	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+head(ExpandCharacterSeries(w[2])))
 End
+
 
 
 // 4. Path Expansion

@@ -31,6 +31,9 @@ static Function test()
 	f="CommandPanelExp#ExpandCharacterSeries"
 	tests($f,"{a..c}","{a,b,c}")
 
+	f="CommandPanelExp#ExpandSeries"
+	testl($f,"{a,b,c}","a;b;c")
+
 
 End
 
