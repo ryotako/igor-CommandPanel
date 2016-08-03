@@ -46,7 +46,12 @@ Function/WAVE split(s,expr)
 	if(!GrepString(s,expr))
 		return void()
 	endif
-	Variable pos=strsearch(s,buf,0), len=strlen(buf)
+	Variable len=strlen(buf), pos
+	if(!StringMatch(expr,"*$"))
+		pos=strsearch(s,buf,0)
+	else
+		pos=strsearch(s,buf,inf,1)
+	endif
 	return cons(s[0,pos-1],cons(buf,cons(s[pos+len,inf],void())))
 End
 Function/WAVE SplitAs(s,w)
@@ -73,7 +78,9 @@ End
 static strconstant M ="|" // one character for masking
 static Function/S Mask(input)
 	String input
-	input = ReplaceString("\\\\",input,M+M) // \ itself
+
+//	input = ReplaceString("\\\\",input,M+M) // \ itself
+	input = MaskExpr(input,"(\\\\)")
 	input = MaskBetween("`" ,ReplaceString("\\`"  ,input,M+M)) // ``
 	input = MaskBetween("\"",ReplaceString("\\\"" ,input,M+M)) // ""
 	input = MaskAfter("//",input) // //
@@ -82,6 +89,24 @@ static Function/S Mask(input)
 	input = ReplaceString("\\," ,input,M+M) // ,
 	return input
 End
+
+// "(\\\\|\\"|[^\\"]|\\[^"])*"(\\\\|\\"|[^\\"]|\\[^"])
+Function/S MaskExpr(s,expr)
+	String s,expr
+	WAVE/T w=split(s,expr)
+	if(null(w))
+		return s
+	endif
+	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
+End
+Function/S RepeatChar(c,n)
+	String c; Variable n
+	if(NumType(n)||n<=0)
+		return ""
+	endif
+	return c[0]+RepeatChar(c,n-1)
+End
+
 static Function/S MaskBetween(str,input)
 	String str,input
 	Variable pos1=0,pos2=0
