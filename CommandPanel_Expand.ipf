@@ -2,7 +2,7 @@
 #define INCLUDED_COMMAND_PANEL_EXP
 #pragma ModuleName=CommandPanelExp
 #include ":CommandPanel_Interface"
-#include ":lib:writer"
+#include ":igor-writer:writer"
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -28,7 +28,7 @@ End
 static Function/WAVE Expand(input)
 	String input
 	InitAlias()
-	return bind(bind(bind(return(input),StrongLineSplit),ExpandBrace),WeakLineSplit)
+	return bind(bind(bind(bind(return(input),StrongLineSplit),ExpandBrace),WeakLineSplit),CompleteParen)
 //	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
 //	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
 //	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove \ from \{ \, \})
@@ -44,10 +44,11 @@ End
 Function/WAVE split(s,expr)
 	String s,expr
 	String buf; SplitString/E=expr s,buf
-	Variable pos = strsearch(s,buf,0), len=strlen(buf)
-	if(strlen(buf)==0)
+	//if(strlen(buf)==0)
+	if(!GrepString(s,expr))
 		return void()
 	endif
+	Variable pos=strsearch(s,buf,0), len=strlen(buf)
 	return cons(s[0,pos-1],cons(buf,cons(s[pos+len,inf],void())))
 End
 Function/WAVE SplitAs(s,w)
@@ -58,8 +59,10 @@ Function/WAVE SplitAs(s,w)
 	Variable len=strlen(head(w))
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
 End
-
-
+Function/S trim(s)
+	String s
+	return ReplaceString(" ",s,"")
+End
 
 // 0,7 Escape Sequence {{{1
 static strconstant M ="|" // one character for masking
@@ -224,7 +227,7 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	WAVE/T w=SplitAs(input,split(mask(input),"({([^{}]|(?1))*,(?2)*})"))
+	WAVE/T w=SplitAs(input,split(mask(input),trim("( { ([^{}] | \{\} | {[^{}]} | (?1))* , (?2)* } )")))
 	if(null(w))
 		return return(input)
 	endif
@@ -233,7 +236,7 @@ static Function/WAVE ExpandSeries(input)
 End
 static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
-	WAVE/T w=SplitAs(body,split(mask(body),"^(([^{},]|({([^{}]*|(?3))}))*)"))
+	WAVE/T w=SplitAs(body,split(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )+ )")))
 	if(null(w))
 		return void()
 	elseif(StringMatch(w[2],","))
@@ -243,7 +246,7 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
-	WAVE/T w=split(input,"({([+-]?\\d+)\.\.(?2)(\.\.(?2))?})")
+	WAVE/T w=split(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
 	if(null(w))
 		return return(input)
 	endif
@@ -258,7 +261,7 @@ static Function/WAVE ExpandNumberSeries(input)
 End
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
-	WAVE/T w=split(input,"({([a-zA-Z])\.\.(?2)(\.\.([+-]?\\d+))?})")
+	WAVE/T w=split(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
 	if(null(w))
 		return return(input)
 	endif
@@ -361,19 +364,16 @@ End
 
 
 // 6. Complete Parenthesis
-static Function/S CompleteParen(input)
+static Function/WAVE CompleteParen(input)
 	String input
-	String space,head,tail,s,comment
-	SplitString/E="^( *)(([a-zA-Z][a-zA-Z_0-9]*)(#(?3))?)(.*?)( *(//.*)*)$" input,space,head,s,s,tail,comment
-	String info=FunctionInfo(head)
-	if(strlen(info) && !GrepString(tail,"^ *\(.*\) *$"))
-		SplitString/E="^ *(.*?) *$" tail,tail
-		if(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(tail,"^ *\".*\" *$"))
-			tail="(\""+tail+"\")"
-		else
-			tail="("+tail+")"	
-		endif
+	WAVE/T w=split(input,trim("^\\s* ( ([a-zA-Z]\\w*) (#(?3))? ) (.*?) (\\s* (//.*)*)")) // space, function, args
+	if(null(w) || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
+		return return(input)
 	endif
-	String output = space+head+tail+comment
-	return SelectString(strlen(output),input,output)
+	String info=FunctionInfo(w[1])
+	WAVE/T arg=split(w[2],"^\\s*(.*?)(\\s*?//.*)?$")// space, args, comment
+	if(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(arg,"^ *\".*\" *$"))
+		arg[1]="\""+arg[1]+"\""
+	endif
+	return return( w[0]+w[1]+"("+arg[1]+")"+arg[2] )
 End

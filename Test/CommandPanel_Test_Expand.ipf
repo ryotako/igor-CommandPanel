@@ -8,6 +8,8 @@ End
 
 static Function test()
 	String f
+	print "test: start"
+
 	f="CommandPanelExp#StrongLineSplit"
 	testw($f,"1;2;3",{"1;2;3"})
 	testl($f,"1;;2;;3","1;2;3")
@@ -32,6 +34,8 @@ static Function test()
 	tests($f,"{a..c}","{a,b,c}")
 
 	f="CommandPanelExp#ExpandSeries"
+	testl($f,"{a,b,{c}}","a;b;{c}")
+	testl($f,"{aa,bb,cc}","aa;bb;cc")
 	testl($f,"{a,b,c}","a;b;c")
 	testl($f,"{a}","{a}")
 	testl($f,"{}","{}")
@@ -44,7 +48,7 @@ static Function test()
 	testl($f,"{a,b,{c,d}}","a;b;c;d")
 	testl($f,"{a,b,{c}}","a;b;{c}")
 
-
+	print "end"
 End
 
 static Function tests(f,s_src,s_ans)
