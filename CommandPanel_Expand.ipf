@@ -1,7 +1,6 @@
 #ifndef INCLUDED_COMMAND_PANEL_EXP
 #define INCLUDED_COMMAND_PANEL_EXP
 #pragma ModuleName=CommandPanelExp
-#include ":CommandPanel_Interface"
 #include ":igor-writer:writer"
 
 // Public Functions
@@ -12,16 +11,6 @@ End
 Function CommandPanel_Alias(input)
 	String input
 	Alias(input)
-End
-
-// Protoyype Functions
-//Function/S CommandPanel_ExpandProtoType1(input)
-//	String input
-//	return input
-//End
-Function/WAVE CommandPanel_ExpandProtoType2(input)
-	String input
-	Make/FREE/T f={input}; return f
 End
 
 // Functions
