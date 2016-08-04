@@ -76,17 +76,13 @@ End
 
 // 0,7 Escape Sequence {{{1
 static strconstant M ="|" // one character for masking
-static Function/S Mask(input)
+Function/S Mask(input)
 	String input
-
-//	input = ReplaceString("\\\\",input,M+M) // \ itself
-	input = MaskExpr(input,"(\\\\)")
-	input = MaskBetween("`" ,ReplaceString("\\`"  ,input,M+M)) // ``
-	input = MaskBetween("\"",ReplaceString("\\\"" ,input,M+M)) // ""
-	input = MaskAfter("//",input) // //
-	input = ReplaceString("\\{" ,input,M+M) // {
-	input = ReplaceString("\\}" ,input,M+M) // }
-	input = ReplaceString("\\," ,input,M+M) // ,
+	input = MaskExpr(input,"(//.*)$") // //
+	input = MaskExpr(input,"(\\\\\\\\)") // \
+	input = MaskExpr(MaskExpr(input,"(\\\\`)" ),"(`[^`]*`)"   ) // `
+	input = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // "
+	input = MaskExpr(input,trim("(\\\\{ | \\\\} | \\\\,)")) // {},
 	return input
 End
 
@@ -94,7 +90,7 @@ End
 Function/S MaskExpr(s,expr)
 	String s,expr
 	WAVE/T w=split(s,expr)
-	if(null(w))
+	if(null(w)||strlen(w[1])==0)
 		return s
 	endif
 	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
@@ -107,36 +103,6 @@ Function/S RepeatChar(c,n)
 	return c[0]+RepeatChar(c,n-1)
 End
 
-static Function/S MaskBetween(str,input)
-	String str,input
-	Variable pos1=0,pos2=0
-	do
-		pos1=strsearch(input,str,pos2)
-		pos2=strsearch(input,str,pos1+1)
-		if(pos2>0)
-			Variable i, N=pos2+strlen(str)-pos1; String mask=""
-			for(i=0;i<N;i+=1)
-				mask += M[0]
-			endfor
-			input=input[0,pos1-1]+mask+input[pos2+1,inf]
-			pos2=pos2+1
-		endif
-	while(pos2>0)
-	return input
-End
-static Function/S MaskAfter(str,input)
-	String str,input
-	Variable pos=strsearch(input,"//",0)
-	if(pos>=0)
-		Variable i,N=strlen(input)-pos; String mask=""
-		for(i=0;i<N;i+=1)
-			mask += M[0]
-		endfor
-		return input[0,pos-1]+mask
-	else
-		return input	
-	endif
-End
 static Function/WAVE RemoveEscapeSeqBrace(input)
 	String input
 	String ref

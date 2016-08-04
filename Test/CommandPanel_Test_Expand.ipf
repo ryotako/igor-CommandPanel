@@ -23,6 +23,9 @@ static Function test()
 	testl($f,"1;;2;;3","1;2;3")
 	testw($f,"1;;\"2;;3\"",{"1","\"2;;3\""})
 
+	tests($f,"`1;2;3`"  ,"1;2;3")
+
+
 	testl($f,"a","alias")	
 	testl($f,"a ; a","alias ; alias")
 	testl($f,"a ; t0","alias ; test0()")
