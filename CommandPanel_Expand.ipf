@@ -1,7 +1,7 @@
 #ifndef INCLUDED_COMMAND_PANEL_EXP
 #define INCLUDED_COMMAND_PANEL_EXP
 #pragma ModuleName=CommandPanelExp
-#include ":igor-writer:writer"
+//#include ":igor-writer:writer"
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)

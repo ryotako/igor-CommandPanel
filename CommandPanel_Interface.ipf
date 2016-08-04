@@ -1,3 +1,5 @@
+#pragma IndependentModule= CommandPanel
+#pragma IndependentModule= CommandPanel
 #ifndef LOADED_COMMAND_PANEL_IF
 #define LOADED_COMMAND_PANEL_IF
 #pragma ModuleName=CommandPanel
@@ -12,8 +14,8 @@ strconstant CommandPanel_WinTitle   = "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)
 // Behavior
 constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
-strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
-strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
+strconstant CommandPanel_Complete   = "CommandPanel#CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
+strconstant CommandPanel_Execute    = "CommandPanel#CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
 constant    CommandPanel_ClickSelect   = 0
 constant    CommandPanel_DClickSelect  = 1
 constant    CommandPanel_DClickExecute = 0
@@ -61,7 +63,7 @@ static Function/S NewName()
 	Extract/FREE/T f,f,WhichListItem(f,wins)<0
 	return f[0]
 End
-static Function/S Target([N])
+Function/S Target([N])
 	Variable N
 	N = NumType(N) || N<0 ? 0 : N
 	return StringFromList(N,WinList(CommandPanel_WinName+"*",";","WIN:64"))
@@ -112,7 +114,7 @@ static Function/S ActivateLine()
 	SetVariable CPLine,win=$Target(),activate
 End
 
-static Function LineAction(line)
+Function LineAction(line)
 	STRUCT WMSetVariableAction &line
 	if(line.eventCode>0)
 		CommandPanel#SetControls()
@@ -161,7 +163,7 @@ Function SetBuffer(w)
 	ListBox CPBuffer, win=$Target(), row=0, selrow=0
 End
 
-static Function BufferAction(buffer)
+Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
 		SetControls()
@@ -225,7 +227,7 @@ static Function NarrowBuffer()
 	endif
 End
 
-static Function BufferModified()
+Function BufferModified()
 	NVAR flag=root:Packages:CommandPanel:V_BufferModified
 	if(NVAR_Exists(flag))
 		return flag
@@ -234,7 +236,7 @@ End
 
 // Ancillary Functions {{{2
 
-static Function/WAVE GetTextWave(name)
+Function/WAVE GetTextWave(name)
 	String name
 	DFREF here=GetDataFolderDFR()
 	NewDataFolder/O/S root:Packages
@@ -248,7 +250,7 @@ static Function/WAVE GetTextWave(name)
 	SetDataFolder here	
 	return w
 End
-static Function SetTextWave(name,w)
+Function SetTextWave(name,w)
 	String name; WAVE/T w
 	WAVE/T f=GetTextWave(name)
 	if(!WaveRefsEqual(f,w))
