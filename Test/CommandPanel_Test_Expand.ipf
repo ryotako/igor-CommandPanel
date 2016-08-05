@@ -11,14 +11,14 @@ static Function test()
 	print "test: start"
 
 	KillWaves/Z root:Packages:CommandPanel:alias
-	f="CommandPanelExp#Alias"
+	f="CommandPanel#CommandPanel_Alias"
 	testl($f,"","")
 	testl($f,"a=alias","")
 	testl($f,"t0=test0" ,"")
 	testl($f,"t1=test1" ,"")
 
 
-	f="CommandPanelExp#Expand"
+	f="CommandPanel#CommandPanel_Expand"
 	testl($f,"1;2;3"  ,"1;2;3")
 	testl($f,"1;;2;;3","1;2;3")
 	testw($f,"1;;\"2;;3\"",{"1","\"2;;3\""})
@@ -86,7 +86,7 @@ static Function testw(f,s_src,w_ans)
 	endif
 	String s
 	print "=============================="
-	print StringByKey("NAME",FuncrefInfo(f))
+	print ">>",StringByKey("NAME",FuncrefInfo(f))
 	print "INPUT"
 	print s_src
 	print "EXPANDED"
