@@ -1,7 +1,7 @@
 #ifndef INCLUDED_COMMAND_PANEL_EXP
 #define INCLUDED_COMMAND_PANEL_EXP
-#pragma ModuleName=CommandPanelExp
-//#include ":igor-writer:writer"
+#pragma ModuleName=CommandPanel
+#include ":igor-writer:writer"
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -17,7 +17,7 @@ End
 static Function/WAVE Expand(input)
 	String input
 	return bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),WeakLineSplit),CompleteParen)
-//	WAVE/T w1 = StrongLineSplit(input)             // 1. Line Split (strong)
+//	WAVE/T w1 = StrongLinepartition(input)             // 1. Line Split (strong)
 //	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
 //	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove \ from \{ \, \})
 //	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
@@ -29,20 +29,7 @@ static Function/WAVE Expand(input)
 End
 
 
-Function/WAVE split(s,expr)
-	String s,expr
-	String buf; SplitString/E=expr s,buf
-	if(!GrepString(s,expr))
-		return void()
-	endif
-	Variable len=strlen(buf), pos
-	if(!StringMatch(expr,"*$"))
-		pos=strsearch(s,buf,0)
-	else
-		pos=strsearch(s,buf,inf,1)
-	endif
-	return cons(s[0,pos-1],cons(buf,cons(s[pos+len,inf],void())))
-End
+
 Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	if(null(w))
@@ -50,10 +37,6 @@ Function/WAVE SplitAs(s,w)
 	endif
 	Variable len=strlen(head(w))
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
-End
-Function/S trim(s)
-	String s
-	return ReplaceString(" ",s,"")
 End
 Function/S join(w)
 	WAVE/T w
@@ -74,12 +57,10 @@ Function/S Mask(input)
 	input = MaskExpr(input,trim("(\\\\{ | \\\\} | \\\\,)")) // {},
 	return input
 End
-
-// "(\\\\|\\"|[^\\"]|\\[^"])*"(\\\\|\\"|[^\\"]|\\[^"])
 Function/S MaskExpr(s,expr)
 	String s,expr
-	WAVE/T w=split(s,expr)
-	if(null(w)||strlen(w[1])==0)
+	WAVE/T w=partition(s,expr)
+	if(strlen(w[1])==0)
 		return s
 	endif
 	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
@@ -155,16 +136,16 @@ End
 // 2. Alias Expansion
 static Function/WAVE ExpandAlias(input)
 	String input
-	WAVE/T w=SplitAs(input,split(mask(input),"(;)"))// line, ;, lines
-	if(null(w))
+	WAVE/T w=SplitAs(input,partition(mask(input),"(;)"))// line, ;, lines
+	if(strlen(w[1]))
 		return ExpandAlias_(input)
 	endif
 	return return( join(concat(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
 static Function/WAVE ExpandAlias_(input) // one line
 	String input
-	WAVE/T w=split(input,"^\\s*([a-zA-Z]\\w*)") //space,alias,args
-	if(null(w))
+	WAVE/T w=partition(input,"^\\s*([a-zA-Z]\\w*)") //space,alias,args
+	if(strlen(w[1]))
 		return return(input)
 	endif
 	Duplicate/FREE/T GetAliasWave(),alias
@@ -191,16 +172,15 @@ End
 static Function/WAVE Alias(expr)
 	String expr
 	Duplicate/T/FREE GetAliasWave() alias
-	WAVE/T w=SplitAs(mask(expr),split(expr,"^ *\\w+ *(=)")) //alias,equal,command
-	if(null(w))
-		return void()
-	endif
-	if(strlen(trim(w[2]))==0)
+	if(strlen(trim(expr))==0)
 		return alias
 	endif
-	Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[0])+"=*")
-	InsertPoints 0,1,alias; alias[0] = trim(w[0])+"="+trim(w[2])
-	SetAliasWave(alias)
+	WAVE/T w=SplitAs(mask(expr),partition(expr,trim("^(\\s*\\w+\\s*=\\s*)") )) //blank,alias=,string
+	if(strlen(w[1]))
+		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
+		InsertPoints 0,1,alias; alias[0] = trim(w[0])+trim(w[2])
+		SetAliasWave(alias)
+	endif
 	return void()
 End
 
@@ -213,8 +193,8 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	WAVE/T w=SplitAs(input,split(mask(input),trim("( { ([^{}] | \{\} | {[^{}]} | (?1))* , (?2)* } )")))
-	if(null(w))
+	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | \{\} | {[^{}]} | (?1))* , (?2)* } )")))
+	if(strlen(w[1]))
 		return return(input)
 	endif
 	WAVE/T ww=ExpandSeries_((w[1])[1,strlen(w[1])-2]); ww=w[0]+ww+w[2]
@@ -222,8 +202,8 @@ static Function/WAVE ExpandSeries(input)
 End
 static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
-	WAVE/T w=SplitAs(body,split(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )+ )")))
-	if(null(w))
+	WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )+ )")))
+	if(strlen(w[1]))
 		return void()
 	elseif(StringMatch(w[2],","))
 		return cons(body[0,strlen(w[1])-1],return(""))
@@ -232,8 +212,8 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
-	WAVE/T w=split(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
-	if(null(w))
+	WAVE/T w=partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
+	if(strlen(w[1]))
 		return return(input)
 	endif
 	String fst,lst,stp; SplitString/E="{([+-]?\\d+)\.\.((?1))(\.\.((?1)))?}" w[1],fst,lst,stp,stp
@@ -247,8 +227,8 @@ static Function/WAVE ExpandNumberSeries(input)
 End
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
-	WAVE/T w=split(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
-	if(null(w))
+	WAVE/T w=partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
+	if(strlen(w[1]))
 		return return(input)
 	endif
 	String fst,lst,stp; SplitString/E="{([a-zA-Z])\.\.((?1))(\.\.([+-]?\\d+))?}" w[1],fst,lst,stp,stp
@@ -265,8 +245,14 @@ End
 // 4. Path Expansion
 Function/WAVE ExpandPath(input)
 	String input
+	WAVE/T w=SplitAs(input,partition(mask(input),trim("( ((?<!\\w)root)? (:[a-zA-Z\*][\\w\*]* | :'[^:;'\"]+')+:? )")))
+	print w
+	return void()
+
+
 	String ref = mask(input)
 	String head,body,tail,s
+	
 	SplitString/E="^(.*?)(((?<!\\w)root)?(:[a-zA-Z\*][\\w\*]*|:'[^:;'\"]+')+:?)(.*?)$" input,head,body,s,s,tail
 	String ref_body=body
 	head=input[0,strlen(head)-1]
@@ -351,12 +337,12 @@ End
 // 6. Complete Parenthesis
 static Function/WAVE CompleteParen(input)
 	String input
-	WAVE/T w=split(input,trim("^\\s* ( ([a-zA-Z]\\w*) (#(?3))? ) (.*?) (\\s* (//.*)*)")) // space, function, args
-	if(null(w) || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
+	WAVE/T w=partition(input,trim("^\\s* ( ([a-zA-Z]\\w*) (#(?3))? ) (.*?) (\\s* (//.*)*)")) // space, function, args
+	if(strlen(w[1]) || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
 		return return(input)
 	endif
 	String info=FunctionInfo(w[1])
-	WAVE/T arg=split(w[2],"^\\s*(.*?)(\\s*(//.*)?)$")// space, args, comment
+	WAVE/T arg=partition(w[2],"^\\s*(.*?)(\\s*(//.*)?)$")// space, args, comment
 	if(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(arg,"^ *\".*\" *$"))
 		arg[1]="\""+arg[1]+"\""
 	endif

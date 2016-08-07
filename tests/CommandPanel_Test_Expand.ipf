@@ -11,16 +11,17 @@ static Function test()
 	print "test: start"
 
 	KillWaves/Z root:Packages:CommandPanel:alias
-	f="CommandPanel#CommandPanel_Alias"
-	testl($f,"","")
-	testl($f,"a=alias","")
-	testl($f,"t0=test0" ,"")
-	testl($f,"t1=test1" ,"")
+	f="CommandPanel#Alias"
+	testw($f,"a=alias",$"")
+	testw($f,"t0=test0" ,$"")
+	testw($f,"t1=test1" ,$"")
 
 
 	f="CommandPanel#CommandPanel_Expand"
 	testl($f,"1;2;3"  ,"1;2;3")
 	testl($f,"1;;2;;3","1;2;3")
+
+//return NaN
 	testw($f,"1;;\"2;;3\"",{"1","\"2;;3\""})
 
 //	tests($f,"`1;2;3`"  ,"1;2;3")
@@ -77,6 +78,9 @@ ENd
 static Function testw(f,s_src,w_ans)
 	FUNCREF CommandPanelExpTest_ProtoType f
 	String s_src; WAVE/T w_ans
+	if(!WaveExists(w))
+		Make/FREE/T/N=0 w_ans
+	endif
 	WAVE/T expanded = f(s_src)
 	if(DimSize(w_ans,0) == DimSize(expanded,0))
 		Make/FREE/N=(DimSize(w_ans,0)) w=abs(cmpstr(w_ans,expanded))
