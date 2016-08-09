@@ -52,6 +52,13 @@ Function test_expand()
 	eq_texts(CommandPanel#ExpandBrace("a{m,,n}"), {"am","a","an"})
 	eq_texts(CommandPanel#ExpandBrace("a{,,,}"), {"a","a","a","a"})
 	eq_texts(CommandPanel#ExpandBrace("a{b,{c,}}"), {"ab","ac","a"})
+
+	eq_texts(CommandPanel#ExpandBrace("\"{a,b,c}\""), {"\"{a,b,c}\""})
+	eq_texts(CommandPanel#ExpandBrace("//{a,b,c}"), {"//{a,b,c}"})
+	eq_texts(CommandPanel#ExpandBrace("{a,b//,c}"), {"{a,b//,c}"})	
+	eq_texts(CommandPanel#ExpandBrace("\\{a,b,c}"), {"{a,b,c}"})
+	eq_texts(CommandPanel#ExpandBrace("{a,b,c\\}"), {"{a,b,c}"})
+	eq_texts(CommandPanel#ExpandBrace("{a\\,b,c}"), {"a,b","c"})
 	
 	eq_texts(CommandPanel#ExpandBrace("{4,{10..40..10},{50..300..50}} K"), {"4 K","10 K","20 K","30 K","40 K","50 K","100 K","150 K","200 K","250 K","300 K"})
 	

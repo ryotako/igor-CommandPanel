@@ -29,7 +29,7 @@ static Function/WAVE Expand(input)
 End
 
 
-
+// Utils
 Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	if(null(w))
@@ -42,8 +42,6 @@ Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
 End
-
-
 Function/S join(w)
 	WAVE/T w
 	if(null(w))
