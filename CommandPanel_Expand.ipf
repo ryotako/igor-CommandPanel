@@ -38,6 +38,12 @@ Function/WAVE SplitAs(s,w)
 	Variable len=strlen(head(w))
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
 End
+Function/S trim(s)
+	String s
+	return ReplaceString(" ",s,"")
+End
+
+
 Function/S join(w)
 	WAVE/T w
 	if(null(w))
@@ -193,8 +199,8 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | \{\} | {[^{}]} | (?1))* , (?2)* } )")))
-	if(strlen(w[1]))
+	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
+	if(strlen(w[1])==0)
 		return return(input)
 	endif
 	WAVE/T ww=ExpandSeries_((w[1])[1,strlen(w[1])-2]); ww=w[0]+ww+w[2]
@@ -202,18 +208,22 @@ static Function/WAVE ExpandSeries(input)
 End
 static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
-	WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )+ )")))
-	if(strlen(w[1]))
-		return void()
-	elseif(StringMatch(w[2],","))
-		return cons(body[0,strlen(w[1])-1],return(""))
+	if(strlen(body)==0)
+		return return("")
+	elseif(StringMatch(body[0],","))
+		return cons("",ExpandSeries_(body[1,inf]))
 	endif
-	return cons(body[0,strlen(w[1])-1] , ExpandSeries_(body[strlen(w[1]+","),inf]))
+	WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )")))
+	if(strlen(w[2]))
+		return cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
+	else
+		return return(w[1])
+	endif
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
 	WAVE/T w=partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
-	if(strlen(w[1]))
+	if(strlen(w[1])==0)
 		return return(input)
 	endif
 	String fst,lst,stp; SplitString/E="{([+-]?\\d+)\.\.((?1))(\.\.((?1)))?}" w[1],fst,lst,stp,stp
@@ -228,7 +238,7 @@ End
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
 	WAVE/T w=partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
-	if(strlen(w[1]))
+	if(strlen(w[1])==0)
 		return return(input)
 	endif
 	String fst,lst,stp; SplitString/E="{([a-zA-Z])\.\.((?1))(\.\.([+-]?\\d+))?}" w[1],fst,lst,stp,stp
@@ -338,7 +348,7 @@ End
 static Function/WAVE CompleteParen(input)
 	String input
 	WAVE/T w=partition(input,trim("^\\s* ( ([a-zA-Z]\\w*) (#(?3))? ) (.*?) (\\s* (//.*)*)")) // space, function, args
-	if(strlen(w[1]) || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
+	if(strlen(w[1])==0 || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
 		return return(input)
 	endif
 	String info=FunctionInfo(w[1])
