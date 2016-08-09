@@ -140,36 +140,25 @@ End
 // 2. Alias Expansion
 static Function/WAVE ExpandAlias(input)
 	String input
-	WAVE/T w=SplitAs(input,partition(mask(input),"(;)"))// line, ;, lines
-	if(strlen(w[1]))
+	WAVE/T w=SplitAs(input,partition(mask(input),";"))// line, ;, lines
+	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
 	return return( join(concat(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
 static Function/WAVE ExpandAlias_(input) // one line
 	String input
-	WAVE/T w=partition(input,"^\\s*([a-zA-Z]\\w*)") //space,alias,args
-	if(strlen(w[1]))
+	WAVE/T w=partition(input,"^\\s*(\\w*)") //space,alias,args
+	if(strlen(w[1])==0)
 		return return(input)
 	endif
-	Duplicate/FREE/T GetAliasWave(),alias
-	Extract/FREE/T alias,alias,StringMatch(alias,w[1]+"=*")
-	return return(w[0]+SelectString(null(alias),(head(alias))[strlen(w[1])+1,inf],w[1])+w[2])
-End
-
-Function/WAVE GetAliasWave()
-	WAVE/T w=root:Packages:CommandPanel:alias
-	if(WaveExists(w))
-		return w
-	endif
-	return void()
-End
-Function/WAVE SetAliasWave(w)
-	WAVE/T w
-	if(WaveExists(w) && !WaveRefsEqual(w,GetAliasWave()))
-		NewDataFolder/O root:Packages
-		NewDataFolder/O root:Packages:CommandPanel
-		Duplicate/O/T w root:Packages:CommandPanel:alias
+	Duplicate/FREE/T GetAliasWave(),als
+	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
+	if(null(als))
+		return return(input)
+	else
+		String cmd=(head(als))[strlen(w[1])+1,inf]
+		return return(w[0]+head(ExpandAlias_(cmd))+w[2])
 	endif
 End
 
@@ -189,6 +178,21 @@ static Function/WAVE Alias(expr)
 	endif
 End
 
+static Function/WAVE GetAliasWave()
+	WAVE/T w=root:Packages:CommandPanel:alias
+	if(WaveExists(w))
+		return w
+	endif
+	return void()
+End
+static Function/WAVE SetAliasWave(w)
+	WAVE/T w
+	if(WaveExists(w) && !WaveRefsEqual(w,GetAliasWave()))
+		NewDataFolder/O root:Packages
+		NewDataFolder/O root:Packages:CommandPanel
+		Duplicate/O/T w root:Packages:CommandPanel:alias
+	endif
+End
 
 // 3. Brace Expansion
 static Function/WAVE ExpandBrace(input)

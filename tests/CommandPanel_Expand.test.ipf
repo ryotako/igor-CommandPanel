@@ -30,14 +30,25 @@ Function test_expand()
 	String alias_wave="root:Packages:CommandPanel:alias"
 	if(WaveExists($alias_wave))
 		Duplicate/T/FREE $alias_wave, backup
-		KillWaves/Z $alias_wave
+		Make/O/T/N=0 $alias_wave
 	endif
+	
 	eq_texts(CommandPanel#Alias(""), $"")
-	eq_texts(CommandPanel#Alias("a=alias"), $"")
+	eq_texts(CommandPanel#Alias("a = alias"), $"")
 	eq_texts(CommandPanel#Alias(""), {"a=alias"})
+	eq_texts(CommandPanel#Alias("a2= a"), $"")
+	eq_texts(CommandPanel#Alias(""), {"a2=a","a=alias"})
+	eq_texts(CommandPanel#Alias("t = test"), $"")
+	
+	eq_texts(CommandPanel#ExpandAlias(""), {""})
+	eq_texts(CommandPanel#ExpandAlias("a"), {"alias"})
+	eq_texts(CommandPanel#ExpandAlias("a2"), {"alias"})
+	eq_texts(CommandPanel#ExpandAlias("a;a"), {"alias;alias"})
+	eq_texts(CommandPanel#ExpandAlias("aa"), {"aa"})
+
 		
 	if(WaveExists(backup))
-//		Duplicate/O/T backup, $alias_wave
+		Duplicate/O/T backup, $alias_wave
 	endif
 
 	// Expand Brace
