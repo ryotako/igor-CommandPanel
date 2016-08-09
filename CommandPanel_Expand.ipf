@@ -346,18 +346,25 @@ Function ObjExists(path)
 	return DataFolderExists(path) || WaveExists(w) || NVAR_Exists(n) || SVAR_Exists(s)
 End
 
-
 // 6. Complete Parenthesis
 static Function/WAVE CompleteParen(input)
 	String input
-	WAVE/T w=partition(input,trim("^\\s* ( ([a-zA-Z]\\w*) (#(?3))? ) (.*?) (\\s* (//.*)*)")) // space, function, args
-	if(strlen(w[1])==0 || strlen(FunctionInfo(w[1]))==0 || GrepString(w[2],"^ *\(.*\) *(//.*)?$"))
+	String ref = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // escape with ""
+	WAVE/T w=SplitAs(input,partition(ref,"\\s(//.*)?$")) // command, comment, ""
+	WAVE/T f=partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
+	String info=FunctionInfo(trim(f[1]))
+	if(strlen(info)==0 || GrepString(f[2],"\\(\\s*\\)"))
 		return return(input)
+	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
+		f[2]="\""+f[2]+"\""
 	endif
-	String info=FunctionInfo(w[1])
-	WAVE/T arg=partition(w[2],"^\\s*(.*?)(\\s*(//.*)?)$")// space, args, comment
-	if(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(arg,"^ *\".*\" *$"))
-		arg[1]="\""+arg[1]+"\""
+	return return( RemoveEndings(f[1]," ")+"("+f[2]+")"+w[1] )
+End
+Function/S RemoveEndings(s,ending)
+	String s,ending
+	String buf=RemoveEnding(s,ending)
+	if(strlen(buf)==strlen(s))
+		return buf
 	endif
-	return return( w[0]+w[1]+"("+arg[1]+")"+arg[2] )
+	return RemoveEndings(buf,ending)
 End

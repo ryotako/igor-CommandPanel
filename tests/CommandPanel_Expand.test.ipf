@@ -1,5 +1,6 @@
 #include "::igor-writer:tests:writer.test"
 #include "::CommandPanel_Expand"
+#pragma ModuleName=cpTest
 
 Function test_expand()
 	// Strong Line Split
@@ -86,6 +87,22 @@ Function test_expand()
 	
 	eq_texts(CommandPanel#ExpandBrace("{4,{10..40..10},{50..300..50}} K"), {"4 K","10 K","20 K","30 K","40 K","50 K","100 K","150 K","200 K","250 K","300 K"})
 	
+	// Complete Parenthesis
+	eq_texts(CommandPanel#CompleteParen(""),{""})
+	eq_texts(CommandPanel#CompleteParen(" test_expand "),{" test_expand() "})
+	eq_texts(CommandPanel#CompleteParen(" test_expand () "),{" test_expand () "})
+	eq_texts(CommandPanel#CompleteParen("test_expand a, b, c // comment"),{"test_expand(a, b, c) // comment"})
+	eq_texts(CommandPanel#CompleteParen("test_expand //"),{"test_expand() //"})
+	eq_texts(CommandPanel#CompleteParen("test_expand \" // \" "),{"test_expand(\" // \") "})
+	eq_texts(CommandPanel#CompleteParen(" test_strfunc "),{" test_strfunc(\"\") "})
+	eq_texts(CommandPanel#CompleteParen("test_strfunc test "),{"test_strfunc(\"test\") "})
+	eq_texts(CommandPanel#CompleteParen("cpTest#test_func "),{"cpTest#test_func(\"\") "})
+	
 End
 
-
+static Function test_func(s)
+	String s
+End
+Function test_strfunc(s)
+	String s
+End
