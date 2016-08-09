@@ -180,12 +180,13 @@ static Function/WAVE Alias(expr)
 		return alias
 	endif
 	WAVE/T w=SplitAs(mask(expr),partition(expr,trim("^(\\s*\\w+\\s*=\\s*)") )) //blank,alias=,string
-	if(strlen(w[1]))
+	if(strlen(w[1])==0)
+		return void()
+	else
 		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
-		InsertPoints 0,1,alias; alias[0] = trim(w[0])+trim(w[2])
+		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
 		SetAliasWave(alias)
 	endif
-	return void()
 End
 
 

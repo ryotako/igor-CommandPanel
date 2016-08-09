@@ -26,6 +26,19 @@ Function test_expand()
 	eq_texts(CommandPanel#WeakLineSplit("a;b//;c"), {"a","b//;c"})
 	eq_texts(CommandPanel#WeakLineSplit("a;\"b;c\""), {"a","\"b;c\""})
 	
+	// Expand Alias
+	String alias_wave="root:Packages:CommandPanel:alias"
+	if(WaveExists($alias_wave))
+		Duplicate/T/FREE $alias_wave, backup
+		KillWaves/Z $alias_wave
+	endif
+	eq_texts(CommandPanel#Alias(""), $"")
+	eq_texts(CommandPanel#Alias("a=alias"), $"")
+	eq_texts(CommandPanel#Alias(""), {"a=alias"})
+		
+	if(WaveExists(backup))
+//		Duplicate/O/T backup, $alias_wave
+	endif
 
 	// Expand Brace
 	eq_texts(CommandPanel#ExpandBrace(""), {""})
