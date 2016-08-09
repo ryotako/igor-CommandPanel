@@ -16,16 +16,7 @@ End
 // Functions
 static Function/WAVE Expand(input)
 	String input
-	return bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),WeakLineSplit),CompleteParen)
-//	WAVE/T w1 = StrongLinepartition(input)             // 1. Line Split (strong)
-//	WAVE/T w2 = ExpandString(ExpandAlias      ,w1) // 2. Alias Expansion
-//	WAVE/T w3 = ExpandWave  (ExpandBrace      ,w2) // 3. Brace Expansion (& Remove \ from \{ \, \})
-//	WAVE/T w4 = ExpandWave  (ExpandPath       ,w3) // 4. Path Expansion
-//	WAVE/T w5 = ExpandWave  (WeakLineSplit    ,w4) // 5. Line Split (weak)
-//	WAVE/T w6 = ExpandString(CompleteParen    ,w5) // 6. Complete Parenthesis
-//	WAVE/T w7 = ExpandString(RemoveEscapeWhole,w6) // 7. Remove Escape Char \\
-//	Extract/T/FREE w7,w8,strlen(w7) // 8. Remove Blank Lines
-//	return w8
+	return bind(bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),ExpandPath),WeakLineSplit),CompleteParen)
 End
 
 
@@ -37,6 +28,10 @@ Function/WAVE SplitAs(s,w)
 	endif
 	Variable len=strlen(head(w))
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
+End
+Function/WAVE PartitionWithMask(s,expr)
+	String s,expr
+	return SplitAs(s,partition(mask(s),expr))
 End
 Function/S trim(s)
 	String s
@@ -140,7 +135,8 @@ End
 // 2. Alias Expansion
 static Function/WAVE ExpandAlias(input)
 	String input
-	WAVE/T w=SplitAs(input,partition(mask(input),";"))// line, ;, lines
+	// WAVE/T w=SplitAs(input,partition(mask(input),";"))// line, ;, lines
+	WAVE/T w=PartitionWithMask(input,";")// line, ;, lines
 	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
@@ -162,13 +158,13 @@ static Function/WAVE ExpandAlias_(input) // one line
 	endif
 End
 
-static Function/WAVE Alias(expr)
-	String expr
+static Function/WAVE Alias(input)
+	String input
 	Duplicate/T/FREE GetAliasWave() alias
-	if(strlen(trim(expr))==0)
+	if(strlen(trim(input))==0)
 		return alias
 	endif
-	WAVE/T w=SplitAs(mask(expr),partition(expr,trim("^(\\s*\\w+\\s*=\\s*)") )) //blank,alias=,string
+	WAVE/T w=PartitionWithMask(input,"^(\\s*\\w+\\s*=\\s*)") //blank,alias=,string
 	if(strlen(w[1])==0)
 		return void()
 	else
@@ -216,7 +212,8 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	elseif(StringMatch(body[0],","))
 		return cons("",ExpandSeries_(body[1,inf]))
 	endif
-	WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )")))
+	// WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )")))
+	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
 	if(strlen(w[2]))
 		return cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
 	else
@@ -258,72 +255,9 @@ End
 // 4. Path Expansion
 Function/WAVE ExpandPath(input)
 	String input
-	WAVE/T w=SplitAs(input,partition(mask(input),trim("( ((?<!\\w)root)? (:[a-zA-Z\*][\\w\*]* | :'[^:;'\"]+')+:? )")))
-	print w
-	return void()
-
-
-	String ref = mask(input)
-	String head,body,tail,s
 	
-	SplitString/E="^(.*?)(((?<!\\w)root)?(:[a-zA-Z\*][\\w\*]*|:'[^:;'\"]+')+:?)(.*?)$" input,head,body,s,s,tail
-	String ref_body=body
-	head=input[0,strlen(head)-1]
-	body=input[strlen(head),strlen(head)+strlen(body)-1]
-	tail=input[strlen(head)+strlen(body),inf]
-	if(strlen(body))
-		body=SelectString(StringMatch(body,":"),body[0],GetDataFolder(1))+body[1,inf]
-		String fixed,expr,unfixed
-		SplitString/E="^(.*?:)([^:]*\*[^:]*)(.*)$" ref_body,fixed,expr,unfixed
-		if(strlen(expr))
-			if(strlen(unfixed))
-				if(cmpstr(expr,"**")==0) // Globstar (folder)
-					WAVE/T f=GlobFolders(fixed)
-					f = RemoveEnding((f)[strlen(fixed),inf],":")
-					if(cmpstr(unfixed,":"))
-						InsertPoints DimSize(f,0),1,f
-					endif
-				else
-					Make/FREE/T/N=(CountObj(fixed,4)) f=PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
-				endif
-				String next
-				SplitString/E="(:[^*]+)$" unfixed,next
-				if(strlen(next))
-					Extract/T/FREE f,f,ObjExists(fixed+f+next)
-				endif
-			else
-				Make/T/FREE/N=(CountObj(fixed,1)) waves    = PossiblyQuoteName(GetIndexedObjName(fixed,1,p))		
-				Make/T/FREE/N=(CountObj(fixed,2)) variables= PossiblyQuoteName(GetIndexedObjName(fixed,2,p))		
-				Make/T/FREE/N=(CountObj(fixed,3)) strings  = PossiblyQuoteName(GetIndexedObjName(fixed,3,p))		
-				if(cmpstr(expr,"**")==0) // Globstar (general)
-					WAVE/T folders=GlobFolders(fixed); folders = RemoveEnding((folders)[strlen(fixed),inf],":")
-				else
-					Make/T/FREE/N=(CountObj(fixed,4)) folders  = PossiblyQuoteName(GetIndexedObjName(fixed,4,p))
-				endif
-				Make/FREE/T/N=0 f; Concatenate/T/NP {folders,waves,variables,strings},f
-			endif
-			Extract/T/FREE f,f,StringMatch(f,expr)||StringMatch(f,"'"+expr+"'")
-			Variable i,N=DimSize(f,0)
-			if(N)
-				Make/FREE/T/N=0 buf
-				for(i=0;i<N;i+=1)
-					String arg = head+SelectString(strlen(f[i]),RemoveEnding(fixed,":"),fixed)+f[i]+unfixed+tail
-					Concatenate/T/NP {ExpandPath(arg)},buf
-				endfor
-				return buf
-			else
-				Make/FREE/T f={""}
-				return f
-			endif
-		else
-			WAVE/T f=ExpandPath(tail)
-			f=head+body+f
-			return f
-		endif
-	else
-		Make/FREE/T f={input}
-		return f
-	endif
+	return return(input)
+
 End
 Function/WAVE GlobFolders(path)
 	String path
