@@ -33,18 +33,18 @@ Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
 	return SplitAs(s,partition(mask(s),expr))
 End
-Function/S trim(s)
+static Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
 End
-Function/S join(w)
+static Function/S join(w)
 	WAVE/T w
 	if(null(w))
 		return ""
 	endif
 	return head(w)+join(tail(w))
 End
-Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
+static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
 	if(null(w1))
 		return void()
@@ -65,7 +65,7 @@ Function/S Mask(input)
 	input = MaskExpr(input,trim("(\\\\{ | \\\\} | \\\\,)")) // {},
 	return input
 End
-Function/S MaskExpr(s,expr)
+static Function/S MaskExpr(s,expr)
 	String s,expr
 	WAVE/T w=partition(s,expr)
 	if(strlen(w[1])==0)
@@ -73,7 +73,7 @@ Function/S MaskExpr(s,expr)
 	endif
 	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
 End
-Function/S RepeatChar(c,n)
+static Function/S RepeatChar(c,n)
 	String c; Variable n
 	if(NumType(n)||n<=0)
 		return ""
@@ -200,7 +200,7 @@ static Function/WAVE SetAliasWave(w)
 End
 
 // 3. Brace Expansion
-static Function/WAVE ExpandBrace(input)
+Function/WAVE ExpandBrace(input)
 	String input
 	return bind(bind(bind(bind(return(input),ExpandNumberSeries),ExpandCharacterSeries),ExpandSeries),RemoveEscapeSeqBrace)
 End
@@ -270,7 +270,7 @@ Function/WAVE ExpandPath(input)
 	endif
 	return product( return(w[0]), product(ExpandPathImpl(w[1]), ExpandPath(w[2])))
 End
-Function/WAVE ExpandPathImpl(path) // implement of path expansion
+static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	String path
 	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
 	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
@@ -279,7 +279,7 @@ Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	endif
 	return buf
 End
-Function/WAVE ExpandPathImpl_(path,token)
+static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
 	print ">>",path
 	if(null(token))
