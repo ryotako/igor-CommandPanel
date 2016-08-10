@@ -1,5 +1,5 @@
-#include "::igor-writer:tests:writer.test"
-#include "::CommandPanel_Expand"
+#include "writer.test"
+#include "CommandPanel"
 #pragma ModuleName=cpTest
 
 Function test_expand()
