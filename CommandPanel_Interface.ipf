@@ -2,7 +2,7 @@
 
 // Options {{{1
 // Appearance
-strconstant CommandPanel_Font       = "Arial"
+strconstant CommandPanel_Font       = "ƒƒCƒŠƒI"
 constant    CommandPanel_Fontsize   = 12
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300

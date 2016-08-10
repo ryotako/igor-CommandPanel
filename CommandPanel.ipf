@@ -8,26 +8,26 @@ strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu CommandPanel_Menu
 	"New Command Panel",/Q,CommandPanel#New()
-	CommandPanelMenu#MenuItem(0),  /Q, DoWindow/F $CommandPanel#Target(N=0)
-	CommandPanelMenu#MenuItem(1),  /Q, DoWindow/F $CommandPanel#Target(N=1)
-	CommandPanelMenu#MenuItem(2),  /Q, DoWindow/F $CommandPanel#Target(N=2)
-	CommandPanelMenu#MenuItem(3),  /Q, DoWindow/F $CommandPanel#Target(N=3)
-	CommandPanelMenu#MenuItem(4),  /Q, DoWindow/F $CommandPanel#Target(N=4)
-	CommandPanelMenu#MenuItem(5),  /Q, DoWindow/F $CommandPanel#Target(N=5)
-	CommandPanelMenu#MenuItem(6),  /Q, DoWindow/F $CommandPanel#Target(N=6)
-	CommandPanelMenu#MenuItem(7),  /Q, DoWindow/F $CommandPanel#Target(N=7)
-	CommandPanelMenu#MenuItem(8),  /Q, DoWindow/F $CommandPanel#Target(N=8)
-	CommandPanelMenu#MenuItem(9),  /Q, DoWindow/F $CommandPanel#Target(N=9)
-	CommandPanelMenu#MenuItem(10), /Q, DoWindow/F $CommandPanel#Target(N=10)
-	CommandPanelMenu#MenuItem(11), /Q, DoWindow/F $CommandPanel#Target(N=11)
-	CommandPanelMenu#MenuItem(12), /Q, DoWindow/F $CommandPanel#Target(N=12)
-	CommandPanelMenu#MenuItem(13), /Q, DoWindow/F $CommandPanel#Target(N=13)
-	CommandPanelMenu#MenuItem(14), /Q, DoWindow/F $CommandPanel#Target(N=14)
-	CommandPanelMenu#MenuItem(15), /Q, DoWindow/F $CommandPanel#Target(N=15)
-	CommandPanelMenu#MenuItem(16), /Q, DoWindow/F $CommandPanel#Target(N=16)
-	CommandPanelMenu#MenuItem(17), /Q, DoWindow/F $CommandPanel#Target(N=17)
-	CommandPanelMenu#MenuItem(18), /Q, DoWindow/F $CommandPanel#Target(N=18)
-	CommandPanelMenu#MenuItem(19), /Q, DoWindow/F $CommandPanel#Target(N=19)
+	CommandPanelMenu#MenuItem(0),  /Q, CommandPanelMenu#MenuCommand(0)
+	CommandPanelMenu#MenuItem(1),  /Q, CommandPanelMenu#MenuCommand(1)
+	CommandPanelMenu#MenuItem(2),  /Q, CommandPanelMenu#MenuCommand(2)
+	CommandPanelMenu#MenuItem(3),  /Q, CommandPanelMenu#MenuCommand(3)
+	CommandPanelMenu#MenuItem(4),  /Q, CommandPanelMenu#MenuCommand(4)
+	CommandPanelMenu#MenuItem(5),  /Q, CommandPanelMenu#MenuCommand(5)
+	CommandPanelMenu#MenuItem(6),  /Q, CommandPanelMenu#MenuCommand(6)
+	CommandPanelMenu#MenuItem(7),  /Q, CommandPanelMenu#MenuCommand(7)
+	CommandPanelMenu#MenuItem(8),  /Q, CommandPanelMenu#MenuCommand(8)
+	CommandPanelMenu#MenuItem(9),  /Q, CommandPanelMenu#MenuCommand(9)
+	CommandPanelMenu#MenuItem(10), /Q, CommandPanelMenu#MenuCommand(10)
+	CommandPanelMenu#MenuItem(11), /Q, CommandPanelMenu#MenuCommand(11)
+	CommandPanelMenu#MenuItem(12), /Q, CommandPanelMenu#MenuCommand(12)
+	CommandPanelMenu#MenuItem(13), /Q, CommandPanelMenu#MenuCommand(13)
+	CommandPanelMenu#MenuItem(14), /Q, CommandPanelMenu#MenuCommand(14)
+	CommandPanelMenu#MenuItem(15), /Q, CommandPanelMenu#MenuCommand(15)
+	CommandPanelMenu#MenuItem(16), /Q, CommandPanelMenu#MenuCommand(16)
+	CommandPanelMenu#MenuItem(17), /Q, CommandPanelMenu#MenuCommand(17)
+	CommandPanelMenu#MenuItem(18), /Q, CommandPanelMenu#MenuCommand(18)
+	CommandPanelMenu#MenuItem(19), /Q, CommandPanelMenu#MenuCommand(19)
 End
 
 Function/S MenuItem(i)
@@ -39,4 +39,8 @@ Function/S MenuItem(i)
 	else
 		return ""
 	endif
+End
+Function/S MenuCommand(i)
+	Variable i
+	DoWindow/F $CommandPanel#Target(N=i)
 End
