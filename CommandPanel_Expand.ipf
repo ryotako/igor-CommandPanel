@@ -1,6 +1,4 @@
 #pragma IndependentModule=CommandPanel
-#ifndef INCLUDED_COMMAND_PANEL_EXP
-#define INCLUDED_COMMAND_PANEL_EXP
 #include ":igor-writer:writer.wave"
 #include ":igor-writer:writer.string"
 
@@ -267,7 +265,6 @@ End
 Function/WAVE ExpandPath(input)
 	String input
 	WAVE/T w = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
-	print w
 	if(strlen(w[1])==0)
 		return return(input)
 	endif

@@ -1,6 +1,4 @@
-#ifndef INCLUDED_COMMAND_PANEL_EXE
-#define INCLUDED_COMMAND_PANEL_EXE
-#pragma ModuleName=CommandPanelExe
+#pragma IndependentModule=CommandPanel
 #include "CommandPanel_Interface"
 #include "CommandPanel_Expand"
 
@@ -12,14 +10,14 @@ strconstant CommandPanel_HistIgnore = ";" // 記録しないコマンドをStringMatchのパ
 
 // Public Functions {{{1
 Function CommandPanel_Execute()
-	String input    = CommandPanel_GetLine()
-	CommandPanel_SetLine("")
-	CommandPanel_GetBuffer() // reset flag
+	String input    = CommandPanel#GetLine()
+	CommandPanel#SetLine("")
+	CommandPanel#GetBuffer() // reset flag
 	
 	// Prepare
 	WAVE/T history=CommandPanel#GetTextWave("history")
 	if(strlen(input)==0)
-		CommandPanel_SetBuffer(history)
+		CommandPanel#SetBuffer(history)
 		return NaN
 	endif
 
@@ -43,19 +41,19 @@ Function CommandPanel_Execute()
 
 	// Add History
 	if(strlen(error))
-		CommandPanel_SetBuffer(history)
-		CommandPanel_SetLine(input)
+		CommandPanel#SetBuffer(history)
+		CommandPanel#SetLine(input)
 	else
 		AddHistory(ReplaceString("\\",input,"\\\\"))
 	endif
 		
 	if(strlen(output))
 		Make/FREE/T/N=(ItemsInList(output,"\r")) f=StringFromList(p,output,"\r")
-		CommandPanel_SetBuffer(f)
+		CommandPanel#SetBuffer(f)
 	endif
 
 	if(!CommandPanel#BufferModified())
-		CommandPanel_SetBuffer(history)		
+		CommandPanel#SetBuffer(history)		
 	endif
 End
 
@@ -86,4 +84,3 @@ static Function/WAVE AddHistory(command)
 	return history
 End
 
-#endif

@@ -1,8 +1,4 @@
-#pragma IndependentModule= CommandPanel
-#pragma IndependentModule= CommandPanel
-#ifndef LOADED_COMMAND_PANEL_IF
-#define LOADED_COMMAND_PANEL_IF
-#pragma ModuleName=CommandPanel
+#pragma IndependentModule=CommandPanel
 
 // Options {{{1
 // Appearance
@@ -24,28 +20,9 @@ constant    CommandPanel_DClickExecute = 0
 // Constants {{{1
 static strconstant CommandPanel_WinName = "CommandPanel"
 
-// Public Functions {{{1
-Function CommandPanel_New()
-	return New()
-End
-Function/S CommandPanel_GetLine()
-	return GetLine()
-End
-Function CommandPanel_SetLine(s)
-	String s
-	return SetLine(s)
-End
-Function/WAVE CommandPanel_GetBuffer()
-	return GetBuffer()
-End
-Function CommandPanel_SetBuffer(w)
-	WAVE/T w
-	return SetBuffer(w)
-End
-
 // Static Functios {{{1
 // Panel {{{2
-static Function New()
+Function New()
 	PauseUpdate; Silent 1 // building window
 	// make panel
 	Variable width  = CommandPanel_WinWidth
@@ -101,16 +78,16 @@ static Function SetControls()
 End
 
 // Command Line {{{2
-static Function/S GetLine()
+Function/S GetLine()
 	ControlInfo/W=$Target() CPLine
 	return SelectString(strlen(S_Value)>0,"",S_Value)
 End
-static Function SetLine(str)
+Function SetLine(str)
 	String str
  	SetVariable CPLine,win=$Target(),value= _STR:str
 End
 
-static Function/S ActivateLine()
+Function/S ActivateLine()
 	SetVariable CPLine,win=$Target(),activate
 End
 
@@ -218,7 +195,7 @@ static Function NarrowBuffer()
 	for(i=0;i<DimSize(exprs,0);i+=1)
 		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
 	endfor
-	CommandPanel_SetBuffer(buffer)
+	CommandPanel#SetBuffer(buffer)
 	if(DimSize(buffer,0))
 		SetLine(buffer[0])
 	endif
@@ -257,5 +234,3 @@ Function SetTextWave(name,w)
 		Duplicate/T/O w f
 	endif
 End
-
-#endif
