@@ -13,7 +13,7 @@ cat ./CommandPanel_Menu.ipf\
          /ModuleName/d
          s/FUNCREF id/FUNCREF CommandPanel_ProtoTypeFunc1/
          s/FUNCREF return/FUNCREF CommandPanel_ProtoTypeFunc2/
-         s/Q, MenuCommand/Q, CommandPanel#MenuComamnd/'\
+         s/Q, MenuCommand/Q, CommandPanel#MenuCommand/'\
   > ./tmp.ipf
 
 cat ./CommandPanel_Header.ipf\

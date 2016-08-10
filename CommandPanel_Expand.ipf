@@ -12,8 +12,9 @@ End
 Function/WAVE CommandPanel_Alias(input)
 	String input
 	WAVE/T w=Alias(input)
-	print w
-	CommandPanel_SetBuffer(w)
+	if(length(w))
+		CommandPanel_SetBuffer(w)
+	endif
 	return w
 End
 

@@ -37,7 +37,7 @@ Function/S MenuItem(i)
 		return ""
 	endif
 End
-Function/S MenuCommand(i)
+Function MenuCommand(i)
 	Variable i
 	DoWindow/F $CommandPanel#Target(N=i)
 End

@@ -13,26 +13,26 @@ strconstant CommandPanel_Menu = "CommandPanel"
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
 	"New Command Panel",/Q,CommandPanel_New()
-	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuComamnd(0)
-	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuComamnd(1)
-	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuComamnd(2)
-	CommandPanel#MenuItem(3),  /Q, CommandPanel#MenuComamnd(3)
-	CommandPanel#MenuItem(4),  /Q, CommandPanel#MenuComamnd(4)
-	CommandPanel#MenuItem(5),  /Q, CommandPanel#MenuComamnd(5)
-	CommandPanel#MenuItem(6),  /Q, CommandPanel#MenuComamnd(6)
-	CommandPanel#MenuItem(7),  /Q, CommandPanel#MenuComamnd(7)
-	CommandPanel#MenuItem(8),  /Q, CommandPanel#MenuComamnd(8)
-	CommandPanel#MenuItem(9),  /Q, CommandPanel#MenuComamnd(9)
-	CommandPanel#MenuItem(10), /Q, CommandPanel#MenuComamnd(10)
-	CommandPanel#MenuItem(11), /Q, CommandPanel#MenuComamnd(11)
-	CommandPanel#MenuItem(12), /Q, CommandPanel#MenuComamnd(12)
-	CommandPanel#MenuItem(13), /Q, CommandPanel#MenuComamnd(13)
-	CommandPanel#MenuItem(14), /Q, CommandPanel#MenuComamnd(14)
-	CommandPanel#MenuItem(15), /Q, CommandPanel#MenuComamnd(15)
-	CommandPanel#MenuItem(16), /Q, CommandPanel#MenuComamnd(16)
-	CommandPanel#MenuItem(17), /Q, CommandPanel#MenuComamnd(17)
-	CommandPanel#MenuItem(18), /Q, CommandPanel#MenuComamnd(18)
-	CommandPanel#MenuItem(19), /Q, CommandPanel#MenuComamnd(19)
+	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
+	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
+	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuCommand(2)
+	CommandPanel#MenuItem(3),  /Q, CommandPanel#MenuCommand(3)
+	CommandPanel#MenuItem(4),  /Q, CommandPanel#MenuCommand(4)
+	CommandPanel#MenuItem(5),  /Q, CommandPanel#MenuCommand(5)
+	CommandPanel#MenuItem(6),  /Q, CommandPanel#MenuCommand(6)
+	CommandPanel#MenuItem(7),  /Q, CommandPanel#MenuCommand(7)
+	CommandPanel#MenuItem(8),  /Q, CommandPanel#MenuCommand(8)
+	CommandPanel#MenuItem(9),  /Q, CommandPanel#MenuCommand(9)
+	CommandPanel#MenuItem(10), /Q, CommandPanel#MenuCommand(10)
+	CommandPanel#MenuItem(11), /Q, CommandPanel#MenuCommand(11)
+	CommandPanel#MenuItem(12), /Q, CommandPanel#MenuCommand(12)
+	CommandPanel#MenuItem(13), /Q, CommandPanel#MenuCommand(13)
+	CommandPanel#MenuItem(14), /Q, CommandPanel#MenuCommand(14)
+	CommandPanel#MenuItem(15), /Q, CommandPanel#MenuCommand(15)
+	CommandPanel#MenuItem(16), /Q, CommandPanel#MenuCommand(16)
+	CommandPanel#MenuItem(17), /Q, CommandPanel#MenuCommand(17)
+	CommandPanel#MenuItem(18), /Q, CommandPanel#MenuCommand(18)
+	CommandPanel#MenuItem(19), /Q, CommandPanel#MenuCommand(19)
 End
 
 static Function/S MenuItem(i)
@@ -45,7 +45,7 @@ static Function/S MenuItem(i)
 		return ""
 	endif
 End
-static Function/S MenuCommand(i)
+static Function MenuCommand(i)
 	Variable i
 	DoWindow/F $CommandPanel#Target(N=i)
 End
@@ -381,8 +381,9 @@ End
 Function/WAVE CommandPanel_Alias(input)
 	String input
 	WAVE/T w=Alias(input)
-	print w
-	CommandPanel_SetBuffer(w)
+	if(length(w))
+		CommandPanel_SetBuffer(w)
+	endif
 	return w
 End
 
