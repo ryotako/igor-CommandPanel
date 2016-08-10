@@ -1,7 +1,6 @@
 #include ":igor-writer:writer.wave"
 #include ":igor-writer:writer.string"
-
-#pragma IndependentModule=CommandPanel
+#pragma ModuleName=CommandPanelExpand
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -21,7 +20,7 @@ End
 
 
 // Utils
-Function/WAVE SplitAs(s,w)
+static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	if(null(w))
 		return void()
@@ -29,7 +28,7 @@ Function/WAVE SplitAs(s,w)
 	Variable len=strlen(head(w))
 	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
 End
-Function/WAVE PartitionWithMask(s,expr)
+static Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
 	return SplitAs(s,partition(mask(s),expr))
 End
@@ -56,7 +55,7 @@ End
 
 // 0,7 Escape Sequence {{{1
 static strconstant M ="|" // one character for masking
-Function/S Mask(input)
+static Function/S Mask(input)
 	String input
 	input = MaskExpr(input,"(//.*)$") // //
 	input = MaskExpr(input,"(\\\\\\\\)") // \
@@ -200,7 +199,7 @@ static Function/WAVE SetAliasWave(w)
 End
 
 // 3. Brace Expansion
-Function/WAVE ExpandBrace(input)
+static Function/WAVE ExpandBrace(input)
 	String input
 	return bind(bind(bind(bind(return(input),ExpandNumberSeries),ExpandCharacterSeries),ExpandSeries),RemoveEscapeSeqBrace)
 End
@@ -262,7 +261,7 @@ End
 
 
 // 4. Path Expansion
-Function/WAVE ExpandPath(input)
+static Function/WAVE ExpandPath(input)
 	String input
 	WAVE/T w = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
 	if(strlen(w[1])==0)
@@ -319,17 +318,17 @@ static Function/WAVE ExpandPathImpl_(path,token)
 	endif
 End
 
-Function PathMatch(path,expr) // now, the matcher is StringMatch
+static Function PathMatch(path,expr) // now, the matcher is StringMatch
 	String path,expr
 	return StringMatch(path,expr)
 End
 
-Function/WAVE Folders(path)
+static Function/WAVE Folders(path)
 	String path
 	Make/T/FREE/N=(CountObj(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
 	return w
 End
-Function/WAVE Objects(path)
+static Function/WAVE Objects(path)
 	String path
 	Make/T/FREE/N=(CountObj(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
 	Make/T/FREE/N=(CountObj(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
@@ -339,7 +338,7 @@ Function/WAVE Objects(path)
 	return f
 End
 
-Function/WAVE GlobFolders(path)
+static Function/WAVE GlobFolders(path)
 	String path
 	WAVE/T w = GlobFolders_(path)
 	if(!null(w))
@@ -347,7 +346,7 @@ Function/WAVE GlobFolders(path)
 	endif
 	return w
 End
-Function/WAVE GlobFolders_(path)
+static Function/WAVE GlobFolders_(path)
 	String path
 	WAVE/T fld=Folders(path); fld=path+fld+":"
 	Variable i,N=length(fld); Make/FREE/T/N=0 buf
@@ -356,12 +355,12 @@ Function/WAVE GlobFolders_(path)
 	endfor
 	return buf
 End
-Function CountObj(path,type)
+static Function CountObj(path,type)
 	String path; Variable type
 	Variable v=CountObjects(path,type)
 	return numtype(v) ? 0 : v
 End
-Function/S RemoveBeginning(s,beginning)
+static Function/S RemoveBeginning(s,beginning)
 	String s,beginning
 	if(strlen(beginning) && cmpstr(s[0,strlen(beginning)-1],beginning)==0)
 		return s[strlen(beginning),inf]
@@ -384,7 +383,7 @@ static Function/WAVE CompleteParen(input)
 	endif
 	return return( RemoveEndings(f[1]," ")+"("+f[2]+")"+w[1] )
 End
-Function/S RemoveEndings(s,ending)
+static Function/S RemoveEndings(s,ending)
 	String s,ending
 	String buf=RemoveEnding(s,ending)
 	if(strlen(buf)==strlen(s))

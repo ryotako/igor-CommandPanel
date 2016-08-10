@@ -1,6 +1,5 @@
-#pragma IndependentModule=CommandPanel
 #include "CommandPanel_Interface"
-
+#pragma ModuleName=CommandPanelComplete
 
 Function CommandPanel_Complete()
 	String input=CommandPanel#GetLine(),head="",tail="",list=""
