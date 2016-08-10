@@ -3,7 +3,7 @@
 strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu CommandPanel_Menu
-	"New Command Panel",/Q,CommandPanel#New()
+	"New Command Panel",/Q,CommandPanel_New()
 	MenuItem(0),  /Q, MenuCommand(0)
 	MenuItem(1),  /Q, MenuCommand(1)
 	MenuItem(2),  /Q, MenuCommand(2)

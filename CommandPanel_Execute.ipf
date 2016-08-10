@@ -1,6 +1,6 @@
 #include "CommandPanel_Interface"
 #include "CommandPanel_Expand"
-#pragma CommandPanelExecute
+#pragma ModuleName=CommandPanelExecute
 
 // history options
 constant CommandPanel_HistEraseDups = 0
@@ -10,14 +10,14 @@ strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
 Function CommandPanel_Execute()
-	String input    = CommandPanel#GetLine()
-	CommandPanel#SetLine("")
-	CommandPanel#GetBuffer() // reset flag
+	String input    = CommandPanel_GetLine()
+	CommandPanel_SetLine("")
+	CommandPanel_GetBuffer() // reset flag
 	
 	// Prepare
 	WAVE/T history=CommandPanel#GetTextWave("history")
 	if(strlen(input)==0)
-		CommandPanel#SetBuffer(history)
+		CommandPanel_SetBuffer(history)
 		return NaN
 	endif
 
@@ -41,19 +41,19 @@ Function CommandPanel_Execute()
 
 	// Add History
 	if(strlen(error))
-		CommandPanel#SetBuffer(history)
-		CommandPanel#SetLine(input)
+		CommandPanel_SetBuffer(history)
+		CommandPanel_SetLine(input)
 	else
 		AddHistory(ReplaceString("\\",input,"\\\\"))
 	endif
 		
 	if(strlen(output))
 		Make/FREE/T/N=(ItemsInList(output,"\r")) f=StringFromList(p,output,"\r")
-		CommandPanel#SetBuffer(f)
+		CommandPanel_SetBuffer(f)
 	endif
 
 	if(!CommandPanel#BufferModified())
-		CommandPanel#SetBuffer(history)		
+		CommandPanel_SetBuffer(history)		
 	endif
 End
 

@@ -2,7 +2,7 @@
 #pragma ModuleName=CommandPanelComplete
 
 Function CommandPanel_Complete()
-	String input=CommandPanel#GetLine(),head="",tail="",list=""
+	String input=CommandPanel_GetLine(),head="",tail="",list=""
 	Make/FREE/T/N=0 f
 	if(GrepString(input,"^[^\"]*(\"[^\"]*\"[^\"]*)*\"[^\"]*$"))
 		// exception: string literal
@@ -29,9 +29,9 @@ Function CommandPanel_Complete()
 			Make/T/FREE/N=(ItemsInList(list)) f=head+StringFromList(p,list)
 		endif
 	endif
-	CommandPanel#SetBuffer(f)
+	CommandPanel_SetBuffer(f)
 	if(DimSize(f,0) && strlen(f[0]))
-		CommandPanel#SetLine(f[0])
+		CommandPanel_SetLine(f[0])
 	endif
 End
 

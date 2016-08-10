@@ -1,5 +1,6 @@
 #pragma ModuleName=CommandPanel
 #include "CommandPanel_Execute"
+#include "CommandPanel_Expand"
 
 // Options {{{1
 // Appearance
@@ -23,7 +24,7 @@ static strconstant CommandPanel_WinName = "CommandPanel"
 
 // Static Functios {{{1
 // Panel {{{2
-static Function New()
+Function CommandPanel_New()
 	PauseUpdate; Silent 1 // building window
 	// make panel
 	Variable width  = CommandPanel_WinWidth
@@ -31,9 +32,13 @@ static Function New()
 	String   name   = UniqueName(CommandPanel_WinName,9,0)
 	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#NewName()
 	// make controls
-	SetControls(); SetLine("")
-	SetBuffer( GetBuffer() )
+	SetControls(); CommandPanel_SetLine("")
+	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
 	DoUpdate; ActivateLine()
+	// init alias
+	if(DimSize(CommandPanel_Alias(""),0)==0)
+		CommandPanel_Alias("alias=CommandPanel_Alias")
+	endif
 End
 static Function/S NewName()
 	String wins=WinList(CommandPanel_WinName+"*",";","WIN:64")
@@ -75,15 +80,15 @@ static Function SetControls()
 	SetVariable CPLine, win=$win, fSize= CommandPanel_FontSize
 	ListBox   CPBuffer, win=$win, fSize= CommandPanel_FontSize
 	// Other Settings
-	ListBox CPBuffer, win=$win, mode=2,listWave=GetBuffer()
+	ListBox CPBuffer, win=$win, mode=2,listWave=CommandPanel_GetBuffer()
 End
 
 // Command Line {{{2
-static Function/S GetLine()
+Function/S CommandPanel_GetLine()
 	ControlInfo/W=$Target() CPLine
 	return SelectString(strlen(S_Value)>0,"",S_Value)
 End
-static Function SetLine(str)
+Function CommandPanel_SetLine(str)
 	String str
  	SetVariable CPLine,win=$Target(),value= _STR:str
 End
@@ -127,14 +132,14 @@ End
 
 // Buffer {{{2
 static strconstant bufflg=root:Packages:CommandPanel:V_BufferModified
-static Function/WAVE GetBuffer()
+Function/WAVE CommandPanel_GetBuffer()
 	NVAR flag=$bufflg
 	if(NVAR_Exists(flag))
 		flag=0
 	endif
 	return GetTextWave("buffer")
 End
-static Function SetBuffer(w)
+Function CommandPanel_SetBuffer(w)
 	WAVE/T w
 	SetTextWave("buffer",w)
 	Variable/G $bufflg=1
@@ -149,7 +154,7 @@ static Function BufferAction(buffer)
 		endif
 	if(buffer.eventCode==1)//Send a selected string by a click. 
 		if(CommandPanel_ClickSelect)
-			SetLine(buffer.listWave[buffer.row])
+			CommandPanel_SetLine(buffer.listWave[buffer.row])
 		endif
 		ActivateLine()
 	endif
@@ -157,7 +162,7 @@ static Function BufferAction(buffer)
 		if(CommandPanel_DClickExecute)
 			Execute/Z/Q CommandPanel_Execute
 		elseif(CommandPanel_DClickSelect)
-			SetLine(buffer.listWave[buffer.row])
+			CommandPanel_SetLine(buffer.listWave[buffer.row])
 		endif
 		ActivateLine()	
 	endif
@@ -165,9 +170,9 @@ End
 
 static Function PossiblyScrollBuffer(step)
 	Variable step
-	String line=GetLine(), win=Target()
+	String line=CommandPanel_GetLine(), win=Target()
 	line=ReplaceString("\\",line,"\\\\")
-	WAVE/T buffer=GetBuffer()
+	WAVE/T buffer=CommandPanel_GetBuffer()
 	ControlInfo/W=$win CPBuffer; Variable row=V_Value
 	if(strlen(line)==0 || cmpstr(line,buffer[row])==0)
 		if(step>0)
@@ -177,7 +182,7 @@ static Function PossiblyScrollBuffer(step)
 		endif
 		ListBox CPBuffer, win=$win, row=row, selrow=row
 		if(DimSize(buffer,0))
-			SetLine(ReplaceString("\\\\",buffer[row],"\\"))
+			CommandPanel_SetLine(ReplaceString("\\\\",buffer[row],"\\"))
 		endif
 		return 1		
 	else
@@ -186,8 +191,8 @@ static Function PossiblyScrollBuffer(step)
 End
 
 static Function NarrowBuffer()
-	WAVE/T buffer=GetBuffer()
-	String expr=RemoveFromList("",GetLine()," ")
+	WAVE/T buffer=CommandPanel_GetBuffer()
+	String expr=RemoveFromList("",CommandPanel_GetLine()," ")
 	Make/FREE/T/N=(ItemsInList(expr," ")) exprs=StringFromList(p,expr," ")
 	if(CommandPanel_IgnoreCase)
 		exprs="(?i)"+exprs
@@ -196,9 +201,9 @@ static Function NarrowBuffer()
 	for(i=0;i<DimSize(exprs,0);i+=1)
 		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
 	endfor
-	CommandPanel#SetBuffer(buffer)
+	CommandPanel_SetBuffer(buffer)
 	if(DimSize(buffer,0))
-		SetLine(buffer[0])
+		CommandPanel_SetLine(buffer[0])
 	endif
 	if(GetRTError(0)==1233)
 		Variable dummy=GetRTError(1)
