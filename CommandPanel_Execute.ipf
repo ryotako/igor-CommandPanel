@@ -1,14 +1,12 @@
-#ifndef INCLUDED_COMMAND_PANEL_EXE
-#define INCLUDED_COMMAND_PANEL_EXE
-#pragma ModuleName=CommandPanelExe
 #include "CommandPanel_Interface"
 #include "CommandPanel_Expand"
+#pragma ModuleName=CommandPanelExecute
 
 // history options
-constant CommandPanel_HistEraseDups   = 0 // 過去全ての履歴から重複を削除
-constant CommandPanel_HistIgnoreDups  = 0 // 直前のコマンドと重複する場合は記録しない
-constant CommandPanel_HistIgnoreSpace = 0 // 半角空白から始まるコマンドは記録しない
-strconstant CommandPanel_HistIgnore = ";" // 記録しないコマンドをStringMatchのパターンのリストとして書く
+constant CommandPanel_HistEraseDups = 0
+constant CommandPanel_HistIgnoreDups = 0
+constant CommandPanel_HistIgnoreSpace = 0
+strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
 Function CommandPanel_Execute()
@@ -86,4 +84,3 @@ static Function/WAVE AddHistory(command)
 	return history
 End
 
-#endif
