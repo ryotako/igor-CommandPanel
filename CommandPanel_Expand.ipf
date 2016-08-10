@@ -1,7 +1,9 @@
+#pragma IndependentModule=CommandPanel
 #ifndef INCLUDED_COMMAND_PANEL_EXP
 #define INCLUDED_COMMAND_PANEL_EXP
-#pragma ModuleName=CommandPanel
-#include ":igor-writer:writer"
+#include ":igor-writer:writer.wave"
+#include ":igor-writer:writer.string"
+
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -16,7 +18,7 @@ End
 // Functions
 static Function/WAVE Expand(input)
 	String input
-	return bind(bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),ExpandPath),WeakLineSplit),CompleteParen)
+	return bind(bind(bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),ExpandPath),WeakLineSplit),CompleteParen),RemoveEscapeWhole)
 End
 
 
@@ -44,6 +46,15 @@ Function/S join(w)
 	endif
 	return head(w)+join(tail(w))
 End
+Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
+	WAVE/T w1,w2
+	if(null(w1))
+		return void()
+	endif
+	Make/FREE/T/N=(DimSize(w2,0)) f=head(w1)+w2
+	return concat(f,product(tail(w1),w2))
+End
+
 
 // 0,7 Escape Sequence {{{1
 static strconstant M ="|" // one character for masking
@@ -89,14 +100,14 @@ static Function/WAVE RemoveEscapeSeqBrace(input)
 	input = ReplaceByRef("\\,",input,",",ref)
 	return return(input)
 End
-static Function/S RemoveEscapeWhole(input)
+static Function/WAVE RemoveEscapeWhole(input)
 	String input
 	String ref = input
 	ref = ReplaceString("\\\\",input,M+M)
 	ref = ReplaceString("\\`" ,input,M+M)
 	input = ReplaceByRef("`",input,"",ref)	
 	input = ReplaceString("\\`",input,"`")
-	return input
+	return return(input)
 End
 static Function/S ReplaceByRef(before,input,after,ref)
 	String before,input,after,ref
@@ -255,30 +266,112 @@ End
 // 4. Path Expansion
 Function/WAVE ExpandPath(input)
 	String input
-	
-	return return(input)
-
+	WAVE/T w = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
+	print w
+	if(strlen(w[1])==0)
+		return return(input)
+	endif
+	return product( return(w[0]), product(ExpandPathImpl(w[1]), ExpandPath(w[2])))
 End
+Function/WAVE ExpandPathImpl(path) // implement of path expansion
+	String path
+	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
+	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
+	if(null(buf))
+		return return(path)		
+	endif
+	return buf
+End
+Function/WAVE ExpandPathImpl_(path,token)
+	String path; WAVE/T token
+	print ">>",path
+	if(null(token))
+		return return(path)
+	elseif(length(token)==1)
+		if(cmpstr(head(token),"**:")==0)
+			WAVE/T fld = GlobFolders(path)
+			fld=path+fld+":"
+			return fld
+		elseif(GrepString(head(token),":$")) // *: -> {fld1:, fld2:}
+			WAVE/T w = Folders(path)
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			fld=path+fld+":"
+			return fld
+		else // * -> {wave, var, str, fld} 
+			WAVE/T w = Objects(path)
+			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head(token),":"))
+			obj=path+obj
+			return obj		
+		endif
+	else
+		if(cmpstr(head(token),"**:")==0)
+			WAVE/T fld = GlobFolders(path)
+			InsertPoints 0,1,fld
+			fld=path+fld+":"
+			fld[0]=RemoveEnding(fld[0],":")
+		else
+			WAVE/T w = Folders(path)
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			fld=path+fld+":"
+		endif
+		Variable i,N=length(fld); Make/FREE/T/N=0 buf
+		for(i=0;i<N;i+=1)
+			Concatenate/NP/T {ExpandPathImpl_(fld[i],tail(token))},buf
+		endfor
+		return buf
+	endif
+End
+
+Function PathMatch(path,expr) // now, the matcher is StringMatch
+	String path,expr
+	return StringMatch(path,expr)
+End
+
+Function/WAVE Folders(path)
+	String path
+	Make/T/FREE/N=(CountObj(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	return w
+End
+Function/WAVE Objects(path)
+	String path
+	Make/T/FREE/N=(CountObj(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
+	Make/T/FREE/N=(CountObj(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
+	Make/T/FREE/N=(CountObj(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
+	Make/T/FREE/N=(CountObj(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	Make/FREE/T/N=0 f; Concatenate/T/NP {fld,wav,var,str},f
+	return f
+End
+
 Function/WAVE GlobFolders(path)
 	String path
-	Make/FREE/T/N=(CountObjects(path,4)) sub=path+PossiblyQuoteName(GetIndexedObjName(path,4,p))+":"
-	Variable i,N=DimSize(sub,0); Make/FREE/T/N=0 f
+	WAVE/T w = GlobFolders_(path)
+	if(!null(w))
+		w=RemoveEnding(RemoveBeginning(w,path),":")
+	endif
+	return w
+End
+Function/WAVE GlobFolders_(path)
+	String path
+	WAVE/T fld=Folders(path); fld=path+fld+":"
+	Variable i,N=length(fld); Make/FREE/T/N=0 buf
 	for(i=0;i<N;i+=1)
-		Make/FREE/T base={sub[i]}
-		Concatenate/T/NP {base, GlobFolders(base[0])},f
+		Concatenate/T/NP {return(fld[i]), GlobFolders_(fld[i])},buf
 	endfor
-	return f
+	return buf
 End
 Function CountObj(path,type)
 	String path; Variable type
 	Variable v=CountObjects(path,type)
 	return numtype(v) ? 0 : v
 End
-Function ObjExists(path)
-	String path
-	WAVE w=$path; NVAR n=$path; SVAR s=$path
-	return DataFolderExists(path) || WaveExists(w) || NVAR_Exists(n) || SVAR_Exists(s)
+Function/S RemoveBeginning(s,beginning)
+	String s,beginning
+	if(strlen(beginning) && cmpstr(s[0,strlen(beginning)-1],beginning)==0)
+		return s[strlen(beginning),inf]
+	endif
+	return s
 End
+
 
 // 6. Complete Parenthesis
 static Function/WAVE CompleteParen(input)
