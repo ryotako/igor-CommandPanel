@@ -1,7 +1,7 @@
-#pragma IndependentModule=CommandPanel
 #include ":igor-writer:writer.wave"
 #include ":igor-writer:writer.string"
 
+#pragma IndependentModule=CommandPanel
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
