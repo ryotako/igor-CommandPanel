@@ -1,15 +1,20 @@
 #include ":igor-writer:writer.wave"
 #include ":igor-writer:writer.string"
+#include "CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
+
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
 	String input
 	return Expand(input)
 End
-Function CommandPanel_Alias(input)
+Function/WAVE CommandPanel_Alias(input)
 	String input
-	Alias(input)
+	WAVE/T w=Alias(input)
+	print w
+	CommandPanel_SetBuffer(w)
+	return w
 End
 
 // Functions
@@ -17,7 +22,6 @@ static Function/WAVE Expand(input)
 	String input
 	return bind(bind(bind(bind(bind(bind(bind(return(input),StrongLineSplit),ExpandAlias),ExpandBrace),ExpandPath),WeakLineSplit),CompleteParen),RemoveEscapeWhole)
 End
-
 
 // Utils
 static Function/WAVE SplitAs(s,w)
@@ -173,13 +177,12 @@ static Function/WAVE Alias(input)
 		return alias
 	endif
 	WAVE/T w=PartitionWithMask(input,"^(\\s*\\w+\\s*=\\s*)") //blank,alias=,string
-	if(strlen(w[1])==0)
-		return void()
-	else
+	if(strlen(w[1]))
 		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
 		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
 		SetAliasWave(alias)
 	endif
+	return void()
 End
 
 static Function/WAVE GetAliasWave()
