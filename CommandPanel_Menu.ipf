@@ -2,7 +2,8 @@
 
 strconstant CommandPanel_Menu = "CommandPanel"
 
-Menu CommandPanel_Menu
+Menu StringFromList(0,CommandPanel_Menu)
+	RemoveListItem(0,CommandPanel_Menu)
 	"New Command Panel",/Q,CommandPanel_New()
 	MenuItem(0),  /Q, MenuCommand(0)
 	MenuItem(1),  /Q, MenuCommand(1)
