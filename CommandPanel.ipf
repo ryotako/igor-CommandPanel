@@ -246,7 +246,7 @@ static Function NarrowBuffer()
 		exprs="(?i)"+exprs
 	endif
 	Variable i
-	for(i=0;i<DimSize(exprs,0);i+=1)
+	for(i=0;i<DimSize(exprs,0) && DimSize(buffer,0);i+=1)
 		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
 	endfor
 	CommandPanel_SetBuffer(buffer)
@@ -903,6 +903,28 @@ static Function/WAVE SubPatterns(s,expr)
 	endfor
 	SetDataFolder here
 	return w
+End
+
+// Ruby: s.split(/expr/)
+static Function/WAVE split(s,expr)
+	String s,expr
+	WAVE/T w = partition(s,expr)
+	print w
+	if(strlen(w[1])==0)
+		Make/FREE/T w={s}; return w
+	endif
+	if(strlen(w[0]))
+		Make/FREE/T buf={w[0]}
+	else
+		Make/FREE/T/N=0 buf	
+	endif
+	if(GrepString(expr,"^\\(*\\^"))
+		Concatenate/NP/T {SubPatterns(s,expr)},buf
+		InsertPoints DimSize(buf,0),1,buf; buf[inf]=w[2]		
+	else
+		Concatenate/NP/T {SubPatterns(s,expr) ,split(w[2],expr) },buf
+		return buf
+	endif
 End// haskell-like wave function
 
 static Function length(w)

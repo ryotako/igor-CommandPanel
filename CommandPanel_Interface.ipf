@@ -1,5 +1,4 @@
 #pragma ModuleName=CommandPanel
-#include "CommandPanel_Execute"
 #include "CommandPanel_Expand"
 
 // Options {{{1
@@ -198,7 +197,7 @@ static Function NarrowBuffer()
 		exprs="(?i)"+exprs
 	endif
 	Variable i
-	for(i=0;i<DimSize(exprs,0);i+=1)
+	for(i=0;i<DimSize(exprs,0) && DimSize(buffer,0);i+=1)
 		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
 	endfor
 	CommandPanel_SetBuffer(buffer)
