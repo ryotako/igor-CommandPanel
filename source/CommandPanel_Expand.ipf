@@ -1,6 +1,5 @@
-#include ":igor-writer:writer.wave"
-#include ":igor-writer:writer.string"
-#include "CommandPanel_Interface"
+#include "::igor-writer:writer"
+#include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
 
 
