@@ -379,7 +379,7 @@ static Function/WAVE CompleteParen(input)
 	WAVE/T w=SplitAs(input,partition(ref,"\\s(//.*)?$")) // command, comment, ""
 	WAVE/T f=partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
-	if(strlen(info)==0 || GrepString(f[2],"\\(\\s*\\)"))
+	if(strlen(info)==0 || GrepString(f[2],"^\\("))
 		return return(input)
 	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
 		f[2]="\""+f[2]+"\""
