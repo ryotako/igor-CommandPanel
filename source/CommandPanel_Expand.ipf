@@ -1,7 +1,20 @@
-#include "::igor-writer:writer"
+#include "writer.string"
+#include "writer.wave"
 #include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
 
+
+Function/WAVE return(s)
+	String s
+	return cons(s,$"")
+End
+Function/WAVE bind(w,f)
+	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
+	return concatMap(f,w)
+End
+Function/WAVE void()
+	Make/FREE/T/N=0 w; return w
+End
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -53,7 +66,7 @@ static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2
 		return void()
 	endif
 	Make/FREE/T/N=(DimSize(w2,0)) f=head(w1)+w2
-	return concat(f,product(tail(w1),w2))
+	return extend(f,product(tail(w1),w2))
 End
 
 
@@ -152,7 +165,7 @@ static Function/WAVE ExpandAlias(input)
 	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
-	return return( join(concat(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
+	return return( join(extend(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
 static Function/WAVE ExpandAlias_(input) // one line
 	String input
