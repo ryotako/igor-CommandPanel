@@ -1,8 +1,20 @@
-#include ":igor-writer:writer.wave"
-#include ":igor-writer:writer.string"
-#include "CommandPanel_Interface"
+#include "writer.string"
+#include "writer.wave"
+#include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
 
+
+Function/WAVE return(s)
+	String s
+	return cons(s,$"")
+End
+Function/WAVE bind(w,f)
+	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
+	return concatMap(f,w)
+End
+Function/WAVE void()
+	Make/FREE/T/N=0 w; return w
+End
 
 // Public Functions
 Function/WAVE CommandPanel_Expand(input)
@@ -54,7 +66,7 @@ static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2
 		return void()
 	endif
 	Make/FREE/T/N=(DimSize(w2,0)) f=head(w1)+w2
-	return concat(f,product(tail(w1),w2))
+	return extend(f,product(tail(w1),w2))
 End
 
 
@@ -153,7 +165,7 @@ static Function/WAVE ExpandAlias(input)
 	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
-	return return( join(concat(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
+	return return( join(extend(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
 static Function/WAVE ExpandAlias_(input) // one line
 	String input
@@ -380,7 +392,7 @@ static Function/WAVE CompleteParen(input)
 	WAVE/T w=SplitAs(input,partition(ref,"\\s(//.*)?$")) // command, comment, ""
 	WAVE/T f=partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
-	if(strlen(info)==0 || GrepString(f[2],"\\(\\s*\\)"))
+	if(strlen(info)==0 || GrepString(f[2],"^\\("))
 		return return(input)
 	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
 		f[2]="\""+f[2]+"\""
