@@ -437,7 +437,6 @@ static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 End
 static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
-	print ">>",path
 	if(null(token))
 		return return(path)
 	elseif(length(token)==1)
