@@ -1,16 +1,15 @@
-#include "writer.string"
-#include "writer.wave"
+#include "writer"
 #include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
 
 
 Function/WAVE return(s)
 	String s
-	return cons(s,$"")
+	return writer#cons(s,$"")
 End
 Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
-	return concatMap(f,w)
+	return writer#concatMap(f,w)
 End
 Function/WAVE void()
 	Make/FREE/T/N=0 w; return w
@@ -24,7 +23,7 @@ End
 Function/WAVE CommandPanel_Alias(input)
 	String input
 	WAVE/T w=Alias(input)
-	if(length(w))
+	if(writer#length(w))
 		CommandPanel_SetBuffer(w)
 	endif
 	return w
@@ -39,15 +38,15 @@ End
 // Utils
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
-	if(null(w))
+	if(writer#null(w))
 		return void()
 	endif
-	Variable len=strlen(head(w))
-	return cons(s[0,len-1],SplitAs(s[len,inf],tail(w)))
+	Variable len=strlen(writer#head(w))
+	return writer#cons(s[0,len-1],SplitAs(s[len,inf],writer#tail(w)))
 End
 static Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
-	return SplitAs(s,partition(mask(s),expr))
+	return SplitAs(s,writer#partition(mask(s),expr))
 End
 static Function/S trim(s)
 	String s
@@ -55,18 +54,18 @@ static Function/S trim(s)
 End
 static Function/S join(w)
 	WAVE/T w
-	if(null(w))
+	if(writer#null(w))
 		return ""
 	endif
-	return head(w)+join(tail(w))
+	return writer#head(w)+join(writer#tail(w))
 End
 static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
-	if(null(w1))
+	if(writer#null(w1))
 		return void()
 	endif
-	Make/FREE/T/N=(DimSize(w2,0)) f=head(w1)+w2
-	return extend(f,product(tail(w1),w2))
+	Make/FREE/T/N=(DimSize(w2,0)) f=writer#head(w1)+w2
+	return writer#extend(f,product(writer#tail(w1),w2))
 End
 
 
@@ -83,7 +82,7 @@ static Function/S Mask(input)
 End
 static Function/S MaskExpr(s,expr)
 	String s,expr
-	WAVE/T w=partition(s,expr)
+	WAVE/T w=writer#partition(s,expr)
 	if(strlen(w[1])==0)
 		return s
 	endif
@@ -145,7 +144,7 @@ static Function/WAVE LineSplitBy(delim,input)
 	if(pos<0)
 		return return(input)
 	endif
-	return cons(input[0,pos-1],LineSplitBy(delim,input[pos+strlen(delim),inf]))
+	return writer#cons(input[0,pos-1],LineSplitBy(delim,input[pos+strlen(delim),inf]))
 End
 static Function/WAVE StrongLineSplit(input)
 	String input
@@ -165,21 +164,21 @@ static Function/WAVE ExpandAlias(input)
 	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
-	return return( join(extend(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
+	return return( join(writer#extend(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2]))) )
 End
 static Function/WAVE ExpandAlias_(input) // one line
 	String input
-	WAVE/T w=partition(input,"^\\s*(\\w*)") //space,alias,args
+	WAVE/T w=writer#partition(input,"^\\s*(\\w*)") //space,alias,args
 	if(strlen(w[1])==0)
 		return return(input)
 	endif
 	Duplicate/FREE/T GetAliasWave(),als
 	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
-	if(null(als))
+	if(writer#null(als))
 		return return(input)
 	else
-		String cmd=(head(als))[strlen(w[1])+1,inf]
-		return return(w[0]+head(ExpandAlias_(cmd))+w[2])
+		String cmd=(writer#head(als))[strlen(w[1])+1,inf]
+		return return(w[0]+writer#head(ExpandAlias_(cmd))+w[2])
 	endif
 End
 
@@ -222,7 +221,7 @@ End
 
 static Function/WAVE ExpandSeries(input)
 	String input
-	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
+	WAVE/T w=SplitAs(input,writer#partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
 	if(strlen(w[1])==0)
 		return return(input)
 	endif
@@ -234,19 +233,19 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	if(strlen(body)==0)
 		return return("")
 	elseif(StringMatch(body[0],","))
-		return cons("",ExpandSeries_(body[1,inf]))
+		return writer#cons("",ExpandSeries_(body[1,inf]))
 	endif
 	// WAVE/T w=SplitAs(body,partition(mask(body),trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )")))
 	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
 	if(strlen(w[2]))
-		return cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
+		return writer#cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
 	else
 		return return(w[1])
 	endif
 End
 static Function/WAVE ExpandNumberSeries(input)
 	String input
-	WAVE/T w=partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
+	WAVE/T w=writer#partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
 	if(strlen(w[1])==0)
 		return return(input)
 	endif
@@ -257,11 +256,11 @@ static Function/WAVE ExpandNumberSeries(input)
 		s+=Num2Str(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+head(ExpandNumberSeries(w[2])))
+	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+writer#head(ExpandNumberSeries(w[2])))
 End
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
-	WAVE/T w=partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
+	WAVE/T w=writer#partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
 	if(strlen(w[1])==0)
 		return return(input)
 	endif
@@ -272,7 +271,7 @@ static Function/WAVE ExpandCharacterSeries(input)
 		s+=Num2Char(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+head(ExpandCharacterSeries(w[2])))
+	return return(SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+writer#head(ExpandCharacterSeries(w[2])))
 End
 
 
@@ -287,47 +286,47 @@ static Function/WAVE ExpandPath(input)
 End
 static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	String path
-	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
-	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
-	if(null(buf))
+	WAVE/T token = SplitAs(path,writer#scan(mask(path),":|[^:]+:?"))
+	WAVE/T buf   = ExpandPathImpl_(writer#head(token),writer#tail(token))
+	if(writer#null(buf))
 		return return(path)		
 	endif
 	return buf
 End
 static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
-	if(null(token))
+	if(writer#null(token))
 		return return(path)
-	elseif(length(token)==1)
-		if(cmpstr(head(token),"**:")==0)
+	elseif(writer#length(token)==1)
+		if(cmpstr(writer#head(token),"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			fld=path+fld+":"
 			return fld
-		elseif(GrepString(head(token),":$")) // *: -> {fld1:, fld2:}
+		elseif(GrepString(writer#head(token),":$")) // *: -> {fld1:, fld2:}
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(writer#head(token),":"))
 			fld=path+fld+":"
 			return fld
 		else // * -> {wave, var, str, fld} 
 			WAVE/T w = Objects(path)
-			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(writer#head(token),":"))
 			obj=path+obj
 			return obj		
 		endif
 	else
-		if(cmpstr(head(token),"**:")==0)
+		if(cmpstr(writer#head(token),"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			InsertPoints 0,1,fld
 			fld=path+fld+":"
 			fld[0]=RemoveEnding(fld[0],":")
 		else
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(writer#head(token),":"))
 			fld=path+fld+":"
 		endif
-		Variable i,N=length(fld); Make/FREE/T/N=0 buf
+		Variable i,N=writer#length(fld); Make/FREE/T/N=0 buf
 		for(i=0;i<N;i+=1)
-			Concatenate/NP/T {ExpandPathImpl_(fld[i],tail(token))},buf
+			Concatenate/NP/T {ExpandPathImpl_(fld[i],writer#tail(token))},buf
 		endfor
 		return buf
 	endif
@@ -356,7 +355,7 @@ End
 static Function/WAVE GlobFolders(path)
 	String path
 	WAVE/T w = GlobFolders_(path)
-	if(!null(w))
+	if(!writer#null(w))
 		w=RemoveEnding(RemoveBeginning(w,path),":")
 	endif
 	return w
@@ -364,7 +363,7 @@ End
 static Function/WAVE GlobFolders_(path)
 	String path
 	WAVE/T fld=Folders(path); fld=path+fld+":"
-	Variable i,N=length(fld); Make/FREE/T/N=0 buf
+	Variable i,N=writer#length(fld); Make/FREE/T/N=0 buf
 	for(i=0;i<N;i+=1)
 		Concatenate/T/NP {return(fld[i]), GlobFolders_(fld[i])},buf
 	endfor
@@ -388,8 +387,8 @@ End
 static Function/WAVE CompleteParen(input)
 	String input
 	String ref = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // escape with ""
-	WAVE/T w=SplitAs(input,partition(ref,"\\s(//.*)?$")) // command, comment, ""
-	WAVE/T f=partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
+	WAVE/T w=SplitAs(input,writer#partition(ref,"\\s(//.*)?$")) // command, comment, ""
+	WAVE/T f=writer#partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
 	if(strlen(info)==0 || GrepString(f[2],"^\\("))
 		return return(input)
