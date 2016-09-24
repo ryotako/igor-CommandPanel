@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Main.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Main.ipf",";",""))
 
 //#include ":CommandPanel_Menu"
 //#include ":CommandPanel_Interface"
@@ -20,7 +20,7 @@
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Menu.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Menu.ipf",";",""))
 
 //#include ":CommandPanel_Interface"
 //#pragma ModuleName=CommandPanelMenu
@@ -72,7 +72,7 @@ End
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Interface.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Interface.ipf",";",""))
 
 //#pragma ModuleName=CommandPanel
 //#include "CommandPanel_Expand"
@@ -159,7 +159,7 @@ static Function SetControls()
 End
 
 // Command Line {{{2
-Function/S CommandPanel_GetLine()
+override Function/S CommandPanel_GetLine()
 	ControlInfo/W=$Target() CPLine
 	return SelectString(strlen(S_Value)>0,"",S_Value)
 End
@@ -207,7 +207,7 @@ End
 
 // Buffer {{{2
 static strconstant bufflg=root:Packages:CommandPanel:V_BufferModified
-Function/WAVE CommandPanel_GetBuffer()
+override Function/WAVE CommandPanel_GetBuffer()
 	NVAR flag=$bufflg
 	if(NVAR_Exists(flag))
 		flag=0
@@ -321,31 +321,31 @@ End
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Expand.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Expand.ipf",";",""))
 
 //#include "writer"
 //#include ":CommandPanel_Interface"
 //#pragma ModuleName=CommandPanelExpand
 
 
-Function/WAVE return(s)
+override Function/WAVE return(s)
 	String s
 	return CommandPanel#cons(s,$"")
 End
-Function/WAVE bind(w,f)
+override Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
 	return CommandPanel#concatMap(f,w)
 End
-Function/WAVE void()
+override Function/WAVE void()
 	Make/FREE/T/N=0 w; return w
 End
 
 // Public Functions
-Function/WAVE CommandPanel_Expand(input)
+override Function/WAVE CommandPanel_Expand(input)
 	String input
 	return Expand(input)
 End
-Function/WAVE CommandPanel_Alias(input)
+override Function/WAVE CommandPanel_Alias(input)
 	String input
 	WAVE/T w=Alias(input)
 	if(CommandPanel#length(w))
@@ -736,7 +736,7 @@ End
 //------------------------------------------------------------------------------
 // original file: writer.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("writer.ipf",";",""))
 
 //#pragma ModuleName=Writer
 // ruby-like string function
@@ -1088,7 +1088,7 @@ End
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Complete.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Complete.ipf",";",""))
 
 //#include "CommandPanel_Interface"
 //#pragma ModuleName=CommandPanelComplete
@@ -1159,7 +1159,7 @@ End
 //------------------------------------------------------------------------------
 // original file: CommandPanel_Execute.ipf 
 //------------------------------------------------------------------------------
-#if !ItemsInList(WinList(".ipf",";",""))
+#if !ItemsInList(WinList("CommandPanel_Execute.ipf",";",""))
 
 //#include "CommandPanel_Interface"
 //#include "CommandPanel_Expand"
