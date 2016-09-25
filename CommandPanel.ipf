@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Sat,24 Sep 2016
+// Sun,25 Sep 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -328,15 +328,15 @@ End
 //#pragma ModuleName=CommandPanelExpand
 
 
-override Function/WAVE return(s)
+static Function/WAVE return(s)
 	String s
 	return CommandPanel#cons(s,$"")
 End
-override Function/WAVE bind(w,f)
+static Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
 	return CommandPanel#concatMap(f,w)
 End
-override Function/WAVE void()
+static Function/WAVE void()
 	Make/FREE/T/N=0 w; return w
 End
 
