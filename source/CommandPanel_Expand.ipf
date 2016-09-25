@@ -3,15 +3,15 @@
 #pragma ModuleName=CommandPanelExpand
 
 
-Function/WAVE return(s)
+static Function/WAVE return(s)
 	String s
 	return writer#cons(s,$"")
 End
-Function/WAVE bind(w,f)
+static Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
 	return writer#concatMap(f,w)
 End
-Function/WAVE void()
+static Function/WAVE void()
 	Make/FREE/T/N=0 w; return w
 End
 
