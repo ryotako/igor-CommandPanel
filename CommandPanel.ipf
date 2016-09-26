@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
-// This procedure file is packaged by igmodule
-// Sun,25 Sep 2016
+// This procedure file is packaged by 
+// Tue,27 Sep 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -23,12 +23,12 @@
 #if !ItemsInList(WinList("CommandPanel_Menu.ipf",";",""))
 
 //#include ":CommandPanel_Interface"
-//#pragma ModuleName=CommandPanelMenu
+//#pragma ModuleName=CommandPanel_Menu
 
-override strconstant CommandPanelMenu = "CommandPanel"
+strconstant CommandPanel_Menu = "CommandPanel"
 
-Menu StringFromList(0,CommandPanelMenu)
-	RemoveListItem(0,CommandPanelMenu)
+Menu StringFromList(0,CommandPanel_Menu)
+	RemoveListItem(0,CommandPanel_Menu)
 	"New Command Panel",/Q,CommandPanel_New()
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
 	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
@@ -79,19 +79,19 @@ End
 
 // Options {{{1
 // Appearance
-override strconstant CommandPanel_Font       = "Arial"
-override constant    CommandPanel_Fontsize   = 12
-override constant    CommandPanel_WinHeight  = 300
-override constant    CommandPanel_WinWidth   = 300
-override strconstant CommandPanel_WinTitle   = "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)"
+strconstant CommandPanel_Font       = "Arial"
+constant    CommandPanel_Fontsize   = 12
+constant    CommandPanel_WinHeight  = 300
+constant    CommandPanel_WinWidth   = 300
+strconstant CommandPanel_WinTitle   = "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)"
 // Behavior
-override constant    CommandPanel_KeySwap    = 0
-override constant    CommandPanel_IgnoreCase = 1
-override strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
-override strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
-override constant    CommandPanel_ClickSelect   = 0
-override constant    CommandPanel_DClickSelect  = 1
-override constant    CommandPanel_DClickExecute = 0
+constant    CommandPanel_KeySwap    = 0
+constant    CommandPanel_IgnoreCase = 1
+strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
+strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
+constant    CommandPanel_ClickSelect   = 0
+constant    CommandPanel_DClickSelect  = 1
+constant    CommandPanel_DClickExecute = 0
 
 
 // Constants {{{1
@@ -159,7 +159,7 @@ static Function SetControls()
 End
 
 // Command Line {{{2
-override Function/S CommandPanel_GetLine()
+Function/S CommandPanel_GetLine()
 	ControlInfo/W=$Target() CPLine
 	return SelectString(strlen(S_Value)>0,"",S_Value)
 End
@@ -207,7 +207,7 @@ End
 
 // Buffer {{{2
 static strconstant bufflg=root:Packages:CommandPanel:V_BufferModified
-override Function/WAVE CommandPanel_GetBuffer()
+Function/WAVE CommandPanel_GetBuffer()
 	NVAR flag=$bufflg
 	if(NVAR_Exists(flag))
 		flag=0
@@ -341,11 +341,11 @@ static Function/WAVE void()
 End
 
 // Public Functions
-override Function/WAVE CommandPanel_Expand(input)
+Function/WAVE CommandPanel_Expand(input)
 	String input
 	return Expand(input)
 End
-override Function/WAVE CommandPanel_Alias(input)
+Function/WAVE CommandPanel_Alias(input)
 	String input
 	WAVE/T w=Alias(input)
 	if(CommandPanel#length(w))
@@ -1083,6 +1083,7 @@ static Function/WAVE drop(n,w)
 	endif
 	return drop(n-1,tail(w))
 End
+
 #endif
 
 //------------------------------------------------------------------------------
@@ -1166,10 +1167,10 @@ End
 //#pragma ModuleName=CommandPanelExecute
 
 // history options
-override constant CommandPanel_HistEraseDups = 0
-override constant CommandPanel_HistIgnoreDups = 0
-override constant CommandPanel_HistIgnoreSpace = 0
-override strconstant CommandPanel_HistIgnore = ";"
+constant CommandPanel_HistEraseDups = 0
+constant CommandPanel_HistIgnoreDups = 0
+constant CommandPanel_HistIgnoreSpace = 0
+strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
 override Function CommandPanel_Execute()
