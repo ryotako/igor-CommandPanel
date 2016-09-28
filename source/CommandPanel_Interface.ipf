@@ -56,7 +56,6 @@ End
 static Function SetControls()
 	String win=Target()
 	// Title
-	NVAR flag = :V_Flag
 	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
  	SetVariable CPLine,win=$win,proc=CommandPanel_Interface#LineAction
