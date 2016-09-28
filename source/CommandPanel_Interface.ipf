@@ -58,13 +58,13 @@ static Function SetControls()
 	// Title
 	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
- 	SetVariable CPLine,win=$win,proc=CommandPanel_Interface#LineAction
-	ListBox   CPBuffer,win=$win,proc=CommandPanel_Interface#BufferAction
+ 	SetVariable CPLine, win=$win, proc=CommandPanel_Interface#LineAction
+	ListBox   CPBuffer, win=$win, proc=CommandPanel_Interface#BufferAction
 	// Size
 	GetWindow $win, wsizeDC ;Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine ;Variable height_in=V_height, height_out=height-height_in
-	SetVariable CPLine,win=$win,pos={0,0},size={width,height_in}
-	ListBox   CPBuffer,win=$win,pos={0,height_in},size={width,height_out}
+	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
+	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
 	// Font
 	if(FindListItem(CommandPanel_Font,FontList(";"))>0)
 		SetVariable CPLine, win=$win, font =$CommandPanel_Font
@@ -73,7 +73,7 @@ static Function SetControls()
 	SetVariable CPLine, win=$win, fSize= CommandPanel_FontSize
 	ListBox   CPBuffer, win=$win, fSize= CommandPanel_FontSize
 	// Other Settings
-	ListBox CPBuffer, win=$win, mode=2,listWave=CommandPanel_GetBuffer()
+	ListBox CPBuffer, win=$win, mode=2, listWave=CommandPanel_GetBuffer()
 End
 
 // Command Line {{{2
