@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
-// This procedure file is packaged by 
-// Tue,27 Sep 2016
+// This procedure file is packaged by igmodule
+// Wed,28 Sep 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -89,9 +89,6 @@ constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
 strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
 strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
-constant    CommandPanel_ClickSelect   = 0
-constant    CommandPanel_DClickSelect  = 1
-constant    CommandPanel_DClickExecute = 0
 
 
 // Constants {{{1
@@ -228,17 +225,10 @@ static Function BufferAction(buffer)
 		ActivateLine()
 		endif
 	if(buffer.eventCode==1)//Send a selected string by a click. 
-		if(CommandPanel_ClickSelect)
-			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()
 	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		if(CommandPanel_DClickExecute)
-			Execute/Z/Q CommandPanel_Execute
-		elseif(CommandPanel_DClickSelect)
 			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()	
 	endif
 End
@@ -738,8 +728,29 @@ End
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("writer.ipf",";",""))
 
-//#pragma ModuleName=Writer
+//------------------------------------------------------------------------------
+// This procedure file is packaged by igmodule
+// Wed,28 Sep 2016
+//------------------------------------------------------------------------------
+//#pragma ModuleName=writer
+
+//------------------------------------------------------------------------------
+// original file: writer_main.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_main.ipf",";",""))
+
+//#include ":writer_string"
+//#include ":writer_list"
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: writer_string.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_string.ipf",";",""))
+
 // ruby-like string function
+//#pragma ModuleName=wString
 
 override Function/S Writer_ProtoTypeSub(s)
 	String s
@@ -916,7 +927,16 @@ static Function/WAVE SubPatterns(s,expr)
 	SetDataFolder here
 	return w
 End
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: writer_list.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_list.ipf",";",""))
+
 // haskell-like wave function
+//#pragma ModuleName=wList
 
 // Prototype Functions
 override Function/S Writer_ProtoTypeId(s)
@@ -1083,6 +1103,9 @@ static Function/WAVE drop(n,w)
 	endif
 	return drop(n-1,tail(w))
 End
+
+#endif
+
 
 #endif
 

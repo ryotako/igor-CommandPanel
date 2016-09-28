@@ -13,9 +13,6 @@ constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
 strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
 strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
-constant    CommandPanel_ClickSelect   = 0
-constant    CommandPanel_DClickSelect  = 1
-constant    CommandPanel_DClickExecute = 0
 
 
 // Constants {{{1
@@ -152,17 +149,10 @@ static Function BufferAction(buffer)
 		ActivateLine()
 		endif
 	if(buffer.eventCode==1)//Send a selected string by a click. 
-		if(CommandPanel_ClickSelect)
-			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()
 	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		if(CommandPanel_DClickExecute)
-			Execute/Z/Q CommandPanel_Execute
-		elseif(CommandPanel_DClickSelect)
 			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()	
 	endif
 End
