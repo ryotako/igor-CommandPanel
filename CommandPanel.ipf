@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
-// This procedure file is packaged by 
-// Tue,27 Sep 2016
+// This procedure file is packaged by igmodule
+// Thu,29 Sep 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -74,8 +74,9 @@ End
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("CommandPanel_Interface.ipf",";",""))
 
-//#pragma ModuleName=CommandPanel
+//#pragma ModuleName=CommandPanel_Interface
 //#include "CommandPanel_Expand"
+//#include "Writer"
 
 // Options {{{1
 // Appearance
@@ -83,15 +84,12 @@ strconstant CommandPanel_Font       = "Arial"
 constant    CommandPanel_Fontsize   = 12
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300
-strconstant CommandPanel_WinTitle   = "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)"
+strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 // Behavior
 constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
 strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
 strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
-constant    CommandPanel_ClickSelect   = 0
-constant    CommandPanel_DClickSelect  = 1
-constant    CommandPanel_DClickExecute = 0
 
 
 // Constants {{{1
@@ -100,16 +98,20 @@ static strconstant CommandPanel_WinName = "CommandPanel"
 // Static Functios {{{1
 // Panel {{{2
 override Function CommandPanel_New()
-	PauseUpdate; Silent 1 // building window
+	// building window
+	PauseUpdate
+	Silent 1
 	// make panel
 	Variable width  = CommandPanel_WinWidth
 	Variable height = CommandPanel_WinHeight
 	String   name   = UniqueName(CommandPanel_WinName,9,0)
 	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#NewName()
 	// make controls
-	SetControls(); CommandPanel_SetLine("")
+	SetControls()
+	CommandPanel_SetLine("")
 	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
-	DoUpdate; ActivateLine()
+	DoUpdate
+	ActivateLine()
 	// init alias
 	if(DimSize(CommandPanel_Alias(""),0)==0)
 		CommandPanel_Alias("alias=CommandPanel_Alias")
@@ -131,14 +133,7 @@ static Function SetControls()
 	String win=Target()
 	// Title
 	NVAR flag = :V_Flag
-	if(NVAR_Exists(flag))
-		Variable tmp=flag
-		Execute/Z/Q "DoWindow/T "+win+", "+CommandPanel_WinTitle+""
-		flag=tmp
-	else
-		Execute/Z/Q "DoWindow/T "+win+", "+CommandPanel_WinTitle+""
-		KillVariables/Z V_Flag	
-	endif
+	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
  	SetVariable CPLine,win=$win,proc=CommandPanel#LineAction
 	ListBox   CPBuffer,win=$win,proc=CommandPanel#BufferAction
@@ -228,17 +223,10 @@ static Function BufferAction(buffer)
 		ActivateLine()
 		endif
 	if(buffer.eventCode==1)//Send a selected string by a click. 
-		if(CommandPanel_ClickSelect)
-			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()
 	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		if(CommandPanel_DClickExecute)
-			Execute/Z/Q CommandPanel_Execute
-		elseif(CommandPanel_DClickSelect)
 			CommandPanel_SetLine(buffer.listWave[buffer.row])
-		endif
 		ActivateLine()	
 	endif
 End
@@ -314,6 +302,39 @@ static Function SetTextWave(name,w)
 	if(!WaveRefsEqual(f,w))
 		Duplicate/T/O w f
 	endif
+End
+
+
+// WinTitle
+static Function/S WinTitle(s)
+	String s
+	String lhs,rhs=CommandPanel#gsub(s,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
+	SVAR S_Value
+	if(SVAR_Exists(S_Value))
+		String tmp=S_Value
+		Execute "S_Value="+rhs
+		lhs=S_Value
+		S_Value=tmp
+	else
+		String/G S_Value	
+		Execute "S_Value="+rhs
+		lhs=S_Value
+		KillStrings/Z S_Value
+	endif
+	return lhs
+End
+static Function/S WinTitleSpecialChar(s)
+	String s
+	StrSwitch(s)
+	case "\\\\":
+		return s
+	case "\\\'":
+		return "\'"
+	case "\'":
+		return "\""
+	default:
+		return s
+	EndSwitch
 End
 
 #endif
@@ -738,8 +759,29 @@ End
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("writer.ipf",";",""))
 
-//#pragma ModuleName=Writer
+//------------------------------------------------------------------------------
+// This procedure file is packaged by igmodule
+// Wed,28 Sep 2016
+//------------------------------------------------------------------------------
+//#pragma ModuleName=writer
+
+//------------------------------------------------------------------------------
+// original file: writer_main.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_main.ipf",";",""))
+
+//#include ":writer_string"
+//#include ":writer_list"
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: writer_string.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_string.ipf",";",""))
+
 // ruby-like string function
+//#pragma ModuleName=wString
 
 override Function/S Writer_ProtoTypeSub(s)
 	String s
@@ -916,7 +958,16 @@ static Function/WAVE SubPatterns(s,expr)
 	SetDataFolder here
 	return w
 End
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: writer_list.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("writer_list.ipf",";",""))
+
 // haskell-like wave function
+//#pragma ModuleName=wList
 
 // Prototype Functions
 override Function/S Writer_ProtoTypeId(s)
@@ -1083,6 +1134,9 @@ static Function/WAVE drop(n,w)
 	endif
 	return drop(n-1,tail(w))
 End
+
+#endif
+
 
 #endif
 

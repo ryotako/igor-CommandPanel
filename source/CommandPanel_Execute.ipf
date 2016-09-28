@@ -15,7 +15,7 @@ Function CommandPanel_Execute()
 	CommandPanel_GetBuffer() // reset flag
 	
 	// Prepare
-	WAVE/T history=CommandPanel#GetTextWave("history")
+	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
 	if(strlen(input)==0)
 		CommandPanel_SetBuffer(history)
 		return NaN
@@ -52,7 +52,7 @@ Function CommandPanel_Execute()
 		CommandPanel_SetBuffer(f)
 	endif
 
-	if(!CommandPanel#BufferModified())
+	if(!CommandPanel_Interface#BufferModified())
 		CommandPanel_SetBuffer(history)		
 	endif
 End
@@ -60,7 +60,7 @@ End
 
 static Function/WAVE AddHistory(command)
 	String command
-	WAVE/T history=CommandPanel#GetTextWave("history")
+	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
 	// Remove Duplications
 	if(CommandPanel_HistEraseDups)
 		Extract/T/O history,history,cmpstr(history,command)
