@@ -12,7 +12,7 @@ Function CommandPanel_Complete()
 		list=FunctionList(tail+"*",";","KIND:2")+OperationList(tail+"*",";","all")
 		Make/T/FREE/N=(ItemsInList(list)) func=head+StringFromList(p,list)
 		// alias
-		Duplicate/T/FREE CommandPanel#GetTextWave("alias") alias; alias=GetAlias(alias)
+		Duplicate/T/FREE CommandPanel_Interface#GetTextWave("alias") alias; alias=GetAlias(alias)
 		Extract/O/T alias,alias,StringMatch(alias,tail+"*")		
 		//Concatenate/T/NP {alias,func},f // Concatenate/T is unavailable for some reasone... 
 		Variable Nf=DimSize(func,0), Na=DimSize(alias,0)

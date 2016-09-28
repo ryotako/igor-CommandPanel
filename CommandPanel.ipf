@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,28 Sep 2016
+// Thu,29 Sep 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -74,7 +74,7 @@ End
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("CommandPanel_Interface.ipf",";",""))
 
-//#pragma ModuleName=CommandPanel
+//#pragma ModuleName=CommandPanel_Interface
 //#include "CommandPanel_Expand"
 //#include "Writer"
 
