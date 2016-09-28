@@ -1,5 +1,6 @@
 #pragma ModuleName=CommandPanel
 #include "CommandPanel_Expand"
+#include "Writer"
 
 // Options {{{1
 // Appearance
@@ -7,7 +8,7 @@ strconstant CommandPanel_Font       = "Arial"
 constant    CommandPanel_Fontsize   = 12
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300
-strconstant CommandPanel_WinTitle   = "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)"
+strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 // Behavior
 constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
@@ -21,16 +22,20 @@ static strconstant CommandPanel_WinName = "CommandPanel"
 // Static Functios {{{1
 // Panel {{{2
 Function CommandPanel_New()
-	PauseUpdate; Silent 1 // building window
+	// building window
+	PauseUpdate
+	Silent 1
 	// make panel
 	Variable width  = CommandPanel_WinWidth
 	Variable height = CommandPanel_WinHeight
 	String   name   = UniqueName(CommandPanel_WinName,9,0)
 	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#NewName()
 	// make controls
-	SetControls(); CommandPanel_SetLine("")
+	SetControls()
+	CommandPanel_SetLine("")
 	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
-	DoUpdate; ActivateLine()
+	DoUpdate
+	ActivateLine()
 	// init alias
 	if(DimSize(CommandPanel_Alias(""),0)==0)
 		CommandPanel_Alias("alias=CommandPanel_Alias")
@@ -52,14 +57,7 @@ static Function SetControls()
 	String win=Target()
 	// Title
 	NVAR flag = :V_Flag
-	if(NVAR_Exists(flag))
-		Variable tmp=flag
-		Execute/Z/Q "DoWindow/T "+win+", "+CommandPanel_WinTitle+""
-		flag=tmp
-	else
-		Execute/Z/Q "DoWindow/T "+win+", "+CommandPanel_WinTitle+""
-		KillVariables/Z V_Flag	
-	endif
+	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
  	SetVariable CPLine,win=$win,proc=CommandPanel#LineAction
 	ListBox   CPBuffer,win=$win,proc=CommandPanel#BufferAction
@@ -228,4 +226,37 @@ static Function SetTextWave(name,w)
 	if(!WaveRefsEqual(f,w))
 		Duplicate/T/O w f
 	endif
+End
+
+
+// WinTitle
+static Function/S WinTitle(s)
+	String s
+	String lhs,rhs=writer#gsub(s,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
+	SVAR S_Value
+	if(SVAR_Exists(S_Value))
+		String tmp=S_Value
+		Execute "S_Value="+rhs
+		lhs=S_Value
+		S_Value=tmp
+	else
+		String/G S_Value	
+		Execute "S_Value="+rhs
+		lhs=S_Value
+		KillStrings/Z S_Value
+	endif
+	return lhs
+End
+static Function/S WinTitleSpecialChar(s)
+	String s
+	StrSwitch(s)
+	case "\\\\":
+		return s
+	case "\\\'":
+		return "\'"
+	case "\'":
+		return "\""
+	default:
+		return s
+	EndSwitch
 End
