@@ -1,4 +1,4 @@
-#pragma ModuleName=CommandPanel
+#pragma ModuleName=CommandPanel_Interface
 #include "CommandPanel_Expand"
 #include "Writer"
 
@@ -29,7 +29,7 @@ Function CommandPanel_New()
 	Variable width  = CommandPanel_WinWidth
 	Variable height = CommandPanel_WinHeight
 	String   name   = UniqueName(CommandPanel_WinName,9,0)
-	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#NewName()
+	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel_Interface#NewName()
 	// make controls
 	SetControls()
 	CommandPanel_SetLine("")
@@ -59,8 +59,8 @@ static Function SetControls()
 	NVAR flag = :V_Flag
 	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
- 	SetVariable CPLine,win=$win,proc=CommandPanel#LineAction
-	ListBox   CPBuffer,win=$win,proc=CommandPanel#BufferAction
+ 	SetVariable CPLine,win=$win,proc=CommandPanel_Interface#LineAction
+	ListBox   CPBuffer,win=$win,proc=CommandPanel_Interface#BufferAction
 	// Size
 	GetWindow $win, wsizeDC ;Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine ;Variable height_in=V_height, height_out=height-height_in
@@ -94,7 +94,7 @@ End
 static Function LineAction(line)
 	STRUCT WMSetVariableAction &line
 	if(line.eventCode>0)
-		CommandPanel#SetControls()
+		CommandPanel_Interface#SetControls()
 	endif
 		if(line.eventCode==2)
 	Variable key=line.eventMod
@@ -121,7 +121,7 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	CommandPanel#ActivateLine()
+	CommandPanel_Interface#ActivateLine()
 End
 
 // Buffer {{{2

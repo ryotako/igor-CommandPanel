@@ -30,7 +30,7 @@ End
 
 static Function/S MenuItem(i)
 	Variable i
-	String win=CommandPanel#Target(N=i)
+	String win=CommandPanel_Interface#Target(N=i)
 	GetWindow/Z $win,wtitle
 	if(strlen(win))
 		return "\M0"+win+" ("+S_Value+")"
@@ -40,5 +40,5 @@ static Function/S MenuItem(i)
 End
 static Function MenuCommand(i)
 	Variable i
-	DoWindow/F $CommandPanel#Target(N=i)
+	DoWindow/F $CommandPanel_Interface#Target(N=i)
 End
