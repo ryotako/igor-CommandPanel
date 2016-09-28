@@ -138,6 +138,10 @@ Function CommandPanel_SetBuffer(w)
 	Variable/G $bufflg=1
 	ListBox CPBuffer, win=$Target(), row=0, selrow=0
 End
+Function CommandPanel_GetSelectedRow()
+	ControlInfo/W=$Target() CPBuffer
+	return V_Value
+End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
