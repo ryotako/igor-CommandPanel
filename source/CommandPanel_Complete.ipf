@@ -35,9 +35,11 @@ static Function ScrollBuffer(n)
 	Variable n
 	WAVE/T buf=CommandPanel_GetBuffer()
 	Variable size=DimSize(buf,0)
-	Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
-	CommandPanel_SelectRow(num)
-	CommandPanel_SetLine(buf[num])
+	if(size>0)
+		Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
+		CommandPanel_SelectRow(num)
+		CommandPanel_SetLine(buf[num])
+	endif
 End
 
 // for a string beginning with whitespace 
