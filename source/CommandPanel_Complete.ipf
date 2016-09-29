@@ -58,7 +58,7 @@ static Function JointSelectedRow()
 	String line=CommandPanel_GetLine()
 	WAVE/T buf=CommandPanel_GetBuffer()
 	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SetLine(line+" "+buf[num])
+	CommandPanel_SetLine(line+buf[num+1])
 	CommandPanel_SelectRow(num+1)
 End
 

@@ -179,17 +179,9 @@ static Function LineAction(line)
 		switch(key)
 		case 0: // Enter
 			Execute/Z/Q CommandPanel_Execute
-			SetVariable CPLine,win=$line.win,activate
 			break
 		case 2: // Shift + Enter
-//			if(!PossiblyScrollBuffer(1))
-//				if(GrepString(line.sval,"^ "))
-//					NarrowBuffer()
-//				else
-					Execute/Z/Q CommandPanel_Complete
-					SetVariable CPLine,win=$line.win,activate
-//				endif
-//			endif
+			Execute/Z/Q CommandPanel_Complete
 			break
 		case 4: // Alt + Enter
 			PossiblyScrollBuffer(-1)
@@ -1212,7 +1204,7 @@ static Function JointSelectedRow()
 	String line=CommandPanel_GetLine()
 	WAVE/T buf=CommandPanel_GetBuffer()
 	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SetLine(line+" "+buf[num])
+	CommandPanel_SetLine(line+buf[num+1])
 	CommandPanel_SelectRow(num+1)
 End
 

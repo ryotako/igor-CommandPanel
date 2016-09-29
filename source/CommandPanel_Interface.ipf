@@ -103,17 +103,9 @@ static Function LineAction(line)
 		switch(key)
 		case 0: // Enter
 			Execute/Z/Q CommandPanel_Execute
-			SetVariable CPLine,win=$line.win,activate
 			break
 		case 2: // Shift + Enter
-//			if(!PossiblyScrollBuffer(1))
-//				if(GrepString(line.sval,"^ "))
-//					NarrowBuffer()
-//				else
-					Execute/Z/Q CommandPanel_Complete
-					SetVariable CPLine,win=$line.win,activate
-//				endif
-//			endif
+			Execute/Z/Q CommandPanel_Complete
 			break
 		case 4: // Alt + Enter
 			PossiblyScrollBuffer(-1)
