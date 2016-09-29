@@ -1,4 +1,6 @@
 #pragma ModuleName=CommandPanel_Interface
+#include "CommandPanel_Complete"
+#include "CommandPanel_Execute"
 #include "CommandPanel_Expand"
 #include "Writer"
 
@@ -12,8 +14,6 @@ strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 // Behavior
 constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
-strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
-strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
 
 
 // Constants {{{1
@@ -102,17 +102,17 @@ static Function LineAction(line)
 		endif
 		switch(key)
 		case 0: // Enter
-			Execute/Z/Q CommandPanel_Execute
+			CommandPanel_Execute()
 			break
 		case 2: // Shift + Enter
-			Execute/Z/Q CommandPanel_Complete
+			CommandPanel_Complete()
 			break
 		case 4: // Alt + Enter
-			PossiblyScrollBuffer(-1)
+			CommandPanel_AltComplete()
 			break
 		endswitch
 	endif
-	CommandPanel_Interface#ActivateLine()
+	ActivateLine()
 End
 
 // Buffer {{{2
@@ -141,58 +141,12 @@ End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
-	if(buffer.eventCode>0) //Redraw at any event except for closing. 
-		SetControls()
-		ActivateLine()
-	endif
-	if(buffer.eventCode==1)//Send a selected string by a click. 
-		ActivateLine()
-	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
 		CommandPanel_SetLine(buffer.listWave[buffer.row])
+	endif
+	if(buffer.eventCode>0) //Redraw at any event except for closing. 
+		SetControls()
 		ActivateLine()	
-	endif
-End
-
-static Function PossiblyScrollBuffer(step)
-	Variable step
-	String line=CommandPanel_GetLine(), win=Target()
-	line=ReplaceString("\\",line,"\\\\")
-	WAVE/T buffer=CommandPanel_GetBuffer()
-	ControlInfo/W=$win CPBuffer; Variable row=V_Value
-	if(strlen(line)==0 || cmpstr(line,buffer[row])==0)
-		if(step>0)
-			row = row+step>=DimSize(buffer,0) ? 0 : row+(strlen(line)>0)*step
-		else
-			row = row+step<0 ? DimSize(buffer,0)-1 : row+step			
-		endif
-		ListBox CPBuffer, win=$win, row=row, selrow=row
-		if(DimSize(buffer,0))
-			CommandPanel_SetLine(ReplaceString("\\\\",buffer[row],"\\"))
-		endif
-		return 1		
-	else
-		return 0
-	endif
-End
-
-static Function NarrowBuffer()
-	WAVE/T buffer=CommandPanel_GetBuffer()
-	String expr=RemoveFromList("",CommandPanel_GetLine()," ")
-	Make/FREE/T/N=(ItemsInList(expr," ")) exprs=StringFromList(p,expr," ")
-	if(CommandPanel_IgnoreCase)
-		exprs="(?i)"+exprs
-	endif
-	Variable i
-	for(i=0;i<DimSize(exprs,0) && DimSize(buffer,0);i+=1)
-		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
-	endfor
-	CommandPanel_SetBuffer(buffer)
-	if(DimSize(buffer,0))
-		CommandPanel_SetLine(buffer[0])
-	endif
-	if(GetRTError(0)==1233)
-		Variable dummy=GetRTError(1)
 	endif
 End
 
@@ -203,8 +157,9 @@ static Function BufferModified()
 	endif
 End
 
-// Ancillary Functions {{{2
 
+
+// Ancillary Functions {{{2
 static Function/WAVE GetTextWave(name)
 	String name
 	DFREF here=GetDataFolderDFR()
@@ -226,7 +181,6 @@ static Function SetTextWave(name,w)
 		Duplicate/T/O w f
 	endif
 End
-
 
 // WinTitle
 static Function/S WinTitle(s)

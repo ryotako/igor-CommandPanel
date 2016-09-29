@@ -75,6 +75,8 @@ End
 #if !ItemsInList(WinList("CommandPanel_Interface.ipf",";",""))
 
 //#pragma ModuleName=CommandPanel_Interface
+//#include "CommandPanel_Complete"
+//#include "CommandPanel_Execute"
 //#include "CommandPanel_Expand"
 //#include "Writer"
 
@@ -88,8 +90,6 @@ strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 // Behavior
 constant    CommandPanel_KeySwap    = 0
 constant    CommandPanel_IgnoreCase = 1
-strconstant CommandPanel_Complete   = "CommandPanel_Complete()" // -> CommandPanel_Complete.ipf
-strconstant CommandPanel_Execute    = "CommandPanel_Execute()"  // -> CommandPanel_Execute.ipf
 
 
 // Constants {{{1
@@ -178,17 +178,17 @@ static Function LineAction(line)
 		endif
 		switch(key)
 		case 0: // Enter
-			Execute/Z/Q CommandPanel_Execute
+			CommandPanel_Execute()
 			break
 		case 2: // Shift + Enter
-			Execute/Z/Q CommandPanel_Complete
+			CommandPanel_Complete()
 			break
 		case 4: // Alt + Enter
-			PossiblyScrollBuffer(-1)
+			CommandPanel_AltComplete()
 			break
 		endswitch
 	endif
-	CommandPanel#ActivateLine()
+	ActivateLine()
 End
 
 // Buffer {{{2
@@ -217,58 +217,12 @@ End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
-	if(buffer.eventCode>0) //Redraw at any event except for closing. 
-		SetControls()
-		ActivateLine()
-	endif
-	if(buffer.eventCode==1)//Send a selected string by a click. 
-		ActivateLine()
-	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
 		CommandPanel_SetLine(buffer.listWave[buffer.row])
+	endif
+	if(buffer.eventCode>0) //Redraw at any event except for closing. 
+		SetControls()
 		ActivateLine()	
-	endif
-End
-
-static Function PossiblyScrollBuffer(step)
-	Variable step
-	String line=CommandPanel_GetLine(), win=Target()
-	line=ReplaceString("\\",line,"\\\\")
-	WAVE/T buffer=CommandPanel_GetBuffer()
-	ControlInfo/W=$win CPBuffer; Variable row=V_Value
-	if(strlen(line)==0 || cmpstr(line,buffer[row])==0)
-		if(step>0)
-			row = row+step>=DimSize(buffer,0) ? 0 : row+(strlen(line)>0)*step
-		else
-			row = row+step<0 ? DimSize(buffer,0)-1 : row+step			
-		endif
-		ListBox CPBuffer, win=$win, row=row, selrow=row
-		if(DimSize(buffer,0))
-			CommandPanel_SetLine(ReplaceString("\\\\",buffer[row],"\\"))
-		endif
-		return 1		
-	else
-		return 0
-	endif
-End
-
-static Function NarrowBuffer()
-	WAVE/T buffer=CommandPanel_GetBuffer()
-	String expr=RemoveFromList("",CommandPanel_GetLine()," ")
-	Make/FREE/T/N=(ItemsInList(expr," ")) exprs=StringFromList(p,expr," ")
-	if(CommandPanel_IgnoreCase)
-		exprs="(?i)"+exprs
-	endif
-	Variable i
-	for(i=0;i<DimSize(exprs,0) && DimSize(buffer,0);i+=1)
-		Extract/T/FREE buffer,buffer,GrepString(buffer,exprs[i])
-	endfor
-	CommandPanel_SetBuffer(buffer)
-	if(DimSize(buffer,0))
-		CommandPanel_SetLine(buffer[0])
-	endif
-	if(GetRTError(0)==1233)
-		Variable dummy=GetRTError(1)
 	endif
 End
 
@@ -279,8 +233,9 @@ static Function BufferModified()
 	endif
 End
 
-// Ancillary Functions {{{2
 
+
+// Ancillary Functions {{{2
 static Function/WAVE GetTextWave(name)
 	String name
 	DFREF here=GetDataFolderDFR()
@@ -302,7 +257,6 @@ static Function SetTextWave(name,w)
 		Duplicate/T/O w f
 	endif
 End
-
 
 // WinTitle
 static Function/S WinTitle(s)
@@ -335,6 +289,222 @@ static Function/S WinTitleSpecialChar(s)
 		return s
 	EndSwitch
 End
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: CommandPanel_Complete.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("CommandPanel_Complete.ipf",";",""))
+
+//#include "CommandPanel_Interface"
+//#pragma ModuleName=CommandPanelComplete
+
+override Function CommandPanel_Complete()
+	String input=CommandPanel_GetLine()
+	WAVE/T buf=CommandPanel_GetBuffer()
+	String selrow=buf[CommandPanel_SelectedRow()]
+	if(strlen(input)==0) // empty string
+		ScrollBuffer(0)
+	elseif(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
+		ScrollBuffer(1)
+	elseif(GrepString(input,"^ ")) // beginning with whitespace
+		FilterBuffer()
+	elseif(GrepString(input,";$")) // ending with ;
+		JointSelectedRow()
+	elseif(GrepString(input,"^(\\\\\\\\|\\\\\\\"|[^\"])*(\"(?1)*\"(?1)*)*\"(?1)*$")) // string literal
+		// do nothing
+	elseif(GrepString(input,"((?<!\\w)root)?:(([a-zA-Z_]\\w*|\'[^;:\"\']+\'):)*([a-zA-Z_]\\w*|\'[^;:\"\']*)?$")) // pathname
+		CompletePathname()
+	elseif(GrepString(input,"^(.*;)? *([A-Za-z]\\w*)$")) // the first word
+		CompleteOperationName()
+	elseif(GrepString(input,"((?<!\\w)[A-Za-z]\\w*)$")) // the second and any later word
+		CompleteFunctionName()
+	endif
+End
+
+override Function CommandPanel_AltComplete()
+	ScrollBuffer(-1)	
+End
+
+
+// for an empty string
+// for the same string as the selected buffer row
+static Function ScrollBuffer(n)
+	Variable n
+	WAVE/T buf=CommandPanel_GetBuffer()
+	Variable size=DimSize(buf,0)
+	Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
+	CommandPanel_SelectRow(num)
+	CommandPanel_SetLine(buf[num])
+End
+
+// for a string beginning with whitespace 
+static Function FilterBuffer()
+	Duplicate/FREE/T CommandPanel_GetBuffer() buf
+	String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
+	Variable i,N=ItemsInList(patterns," ")
+	for(i=0;i<N;i+=1)
+		String pattern=StringFromList(i,patterns," ")
+		Extract/FREE/T buf,buf,GrepString(buf,pattern)
+	endfor
+	CommandPanel_SetBuffer(buf)
+	if(DimSize(buf,0))
+		CommandPanel_SetLine(buf[0])
+	endif
+End
+
+// for a string ending with ;
+static Function JointSelectedRow()
+	String line=CommandPanel_GetLine()
+	WAVE/T buf=CommandPanel_GetBuffer()
+	Variable num=CommandPanel_SelectedRow()
+	CommandPanel_SetLine(line+buf[num+1])
+	CommandPanel_SelectRow(num+1)
+End
+
+// for a pathname
+static Function CompletePathname()
+	String line=CommandPanel_GetLine(),cmd,path,name,s
+	SplitString/E="^(.*?)(((?<!\w)root)?:(([a-zA-Z_]\w*):)*)([a-zA-Z_]\w*|\'[^;:\"\']*)?$" line,cmd,path,s,s,s,name
+	if(DataFolderExists(path))
+		Make/FREE/T/N=(CountObjects(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
+		Make/FREE/T/N=(CountObjects(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
+		Make/FREE/T/N=(CountObjects(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
+		Make/FREE/T/N=(CountObjects(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+		Make/FREE/T/N=0 obj
+		Concatenate/T/NP {wav,var,str,fld},obj
+		Extract/T/FREE obj,obj,StringMatch(obj,name+"*")
+		Make/T/FREE/N=(DimSize(obj,0)) buf=cmd+path+obj
+		if(DimSize(buf,0))
+			CommandPanel_SetBuffer(buf)
+			CommandPanel_SetLine(buf[0])
+		endif
+	endif
+End
+
+// for the first word
+// TODO: alias completion
+override Function CompleteOperationName()
+	String line=CommandPanel_GetLine(),preopr,opr
+	SplitString/E="(.*;)? *([A-Za-z]\\w*)$" line,preopr,opr
+	String list=FunctionList(opr+"*",";","KIND:2")+OperationList(opr+"*",";","all")
+	Make/FREE/T/N=(ItemsInList(list)) oprs=StringFromList(p,list)
+	Extract/T/FREE oprs,oprs,StringMatch(oprs,opr+"*")
+	Make/T/FREE/N=(DimSize(oprs,0)) buf=preopr+oprs
+	if(DimSize(buf,0))
+		CommandPanel_SetBuffer(buf)
+		CommandPanel_SetLine(buf[0])	
+	endif
+End
+
+// for the second or any later word
+override Function CompleteFunctionName()
+	String line=CommandPanel_GetLine(),prefnc,fnc
+	SplitString/E="^(.*?)((?<!\\w)[A-Za-z]\\w*)$" line,prefnc,fnc
+	String list=FunctionList(fnc+"*",";","KIND:3")
+	Make/FREE/T/N=(ItemsInList(list)) fncs=StringFromList(p,list)
+	Extract/T/FREE fncs,fncs,StringMatch(fncs,fnc+"*")
+	Make/T/FREE/N=(DimSize(fncs,0)) buf=prefnc+fncs
+	if(DimSize(buf,0))
+		CommandPanel_SetBuffer(buf)
+		CommandPanel_SetLine(buf[0])	
+	endif
+End
+
+#endif
+
+//------------------------------------------------------------------------------
+// original file: CommandPanel_Execute.ipf 
+//------------------------------------------------------------------------------
+#if !ItemsInList(WinList("CommandPanel_Execute.ipf",";",""))
+
+//#include "CommandPanel_Interface"
+//#include "CommandPanel_Expand"
+//#pragma ModuleName=CommandPanelExecute
+
+// history options
+constant CommandPanel_HistEraseDups = 0
+constant CommandPanel_HistIgnoreDups = 0
+constant CommandPanel_HistIgnoreSpace = 0
+strconstant CommandPanel_HistIgnore = ";"
+
+// Public Functions {{{1
+override Function CommandPanel_Execute()
+	String input    = CommandPanel_GetLine()
+	CommandPanel_SetLine("")
+	CommandPanel_GetBuffer() // reset flag
+	
+	// Prepare
+	WAVE/T history=CommandPanel#GetTextWave("history")
+	if(strlen(input)==0)
+		CommandPanel_SetBuffer(history)
+		return NaN
+	endif
+
+	// Execute
+	WAVE/T commands = CommandPanel_Expand(input)
+	if(DimSize(commands,0)==0)
+		Make/FREE/T commands = {input}
+	endif
+	Variable ref,i,N=DimSize(commands,0); String output="",error=""
+	for(i=0;i<N;i+=1)
+		print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91)+commands[i]+"\r"
+		ref = CaptureHistoryStart()
+		Execute/Z commands[i]
+		error = GetErrMessage(V_Flag)
+		print error
+		output += CaptureHistory(ref,ref)
+		if(strlen(error))
+			break
+		endif
+	endfor
+
+	// Add History
+	if(strlen(error))
+		CommandPanel_SetBuffer(history)
+		CommandPanel_SetLine(input)
+	else
+		AddHistory(ReplaceString("\\",input,"\\\\"))
+	endif
+		
+	if(strlen(output))
+		Make/FREE/T/N=(ItemsInList(output,"\r")) f=StringFromList(p,output,"\r")
+		CommandPanel_SetBuffer(f)
+	endif
+
+	if(!CommandPanel#BufferModified())
+		CommandPanel_SetBuffer(history)		
+	endif
+End
+
+
+static Function/WAVE AddHistory(command)
+	String command
+	WAVE/T history=CommandPanel#GetTextWave("history")
+	// Remove Duplications
+	if(CommandPanel_HistEraseDups)
+		Extract/T/O history,history,cmpstr(history,command)
+	elseif(CommandPanel_HistIgnoreDups && cmpstr(command,history[0]) == 0)
+		DeletePoints 0,1,history
+	endif
+	// Add History
+	InsertPoints 0,1,history; history[0]=command
+	// Ignore History
+	if(CommandPanel_HistIgnoreSpace && StringMatch(history[0]," *"))
+		DeletePoints 0,1,history
+	elseif(ItemsInList(CommandPanel_HistIgnore) && strlen(command))
+		Variable i,N=ItemsInList(CommandPanel_HistIgnore)
+		for(i=0;i<N;i+=1)
+			if(StringMatch(history[0],StringFromList(i,CommandPanel_HistIgnore)))
+				DeletePoints 0,1,history
+				break		
+			endif
+		endfor
+	endif
+	return history
+End
+
 
 #endif
 
@@ -1135,220 +1305,6 @@ static Function/WAVE drop(n,w)
 End
 
 #endif
-
-
-#endif
-
-//------------------------------------------------------------------------------
-// original file: CommandPanel_Complete.ipf 
-//------------------------------------------------------------------------------
-#if !ItemsInList(WinList("CommandPanel_Complete.ipf",";",""))
-
-//#include "CommandPanel_Interface"
-//#pragma ModuleName=CommandPanelComplete
-
-override Function CommandPanel_Complete()
-	String input=CommandPanel_GetLine()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	String selrow=buf[CommandPanel_SelectedRow()]
-	if(strlen(input)==0) // empty string
-		ReadSelectedRow()	
-	elseif(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
-		ScrollDownBuffer()
-	elseif(GrepString(input,"^ ")) // beginning with whitespace
-		FilterBuffer()
-	elseif(GrepString(input,";$")) // ending with ;
-		JointSelectedRow()
-	elseif(GrepString(input,"^(\\\\\\\\|\\\\\\\"|[^\"])*(\"(?1)*\"(?1)*)*\"(?1)*$")) // string literal
-		// do nothing
-	elseif(GrepString(input,"((?<!\\w)root)?:(([a-zA-Z_]\\w*|\'[^;:\"\']+\'):)*([a-zA-Z_]\\w*|\'[^;:\"\']*)?$")) // pathname
-		CompletePathname()
-	elseif(GrepString(input,"^(.*;)? *([A-Za-z]\\w*)$")) // the first word
-		CompleteOperationName()
-	elseif(GrepString(input,"((?<!\\w)[A-Za-z]\\w*)$")) // the second and any later word
-		CompleteFunctionName()
-	endif
-End
-
-// for an empty string
-static Function ReadSelectedRow()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SelectRow(num)
-	CommandPanel_SetLine(buf[num])
-End
-
-// for the same string as the selected buffer row
-static Function ScrollDownBuffer()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=mod(CommandPanel_SelectedRow()+1,DimSize(buf,0))
-	CommandPanel_SelectRow(num)
-	CommandPanel_SetLine(buf[num])		
-End
-
-// for a string beginning with whitespace 
-static Function FilterBuffer()
-	Duplicate/FREE/T CommandPanel_GetBuffer() buf
-	String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
-	Variable i,N=ItemsInList(patterns," ")
-	for(i=0;i<N;i+=1)
-		String pattern=StringFromList(i,patterns," ")
-		Extract/FREE/T buf,buf,GrepString(buf,pattern)
-	endfor
-	CommandPanel_SetBuffer(buf)
-	CommandPanel_SetLine("")
-End
-
-// for a string ending with ;
-static Function JointSelectedRow()
-	String line=CommandPanel_GetLine()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SetLine(line+buf[num+1])
-	CommandPanel_SelectRow(num+1)
-End
-
-// for a pathname
-static Function CompletePathname()
-	String line=CommandPanel_GetLine(),cmd,path,name,s
-	SplitString/E="^(.*?)(((?<!\w)root)?:(([a-zA-Z_]\w*):)*)([a-zA-Z_]\w*|\'[^;:\"\']*)?$" line,cmd,path,s,s,s,name
-	if(DataFolderExists(path))
-		Make/FREE/T/N=(CountObjects(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
-		Make/FREE/T/N=(CountObjects(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
-		Make/FREE/T/N=(CountObjects(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
-		Make/FREE/T/N=(CountObjects(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
-		Make/FREE/T/N=0 obj
-		Concatenate/T/NP {wav,var,str,fld},obj
-		Extract/T/FREE obj,obj,StringMatch(obj,name+"*")
-		Make/T/FREE/N=(DimSize(obj,0)) buf=cmd+path+obj
-		if(DimSize(buf,0))
-			CommandPanel_SetBuffer(buf)
-			CommandPanel_SetLine(buf[0])
-		endif
-	endif
-End
-
-// for the first word
-// TODO: alias completion
-override Function CompleteOperationName()
-	String line=CommandPanel_GetLine(),preopr,opr
-	SplitString/E="(.*;)? *([A-Za-z]\\w*)$" line,preopr,opr
-	String list=FunctionList(opr+"*",";","KIND:2")+OperationList(opr+"*",";","all")
-	Make/FREE/T/N=(ItemsInList(list)) oprs=StringFromList(p,list)
-	Extract/T/FREE oprs,oprs,StringMatch(oprs,opr+"*")
-	Make/T/FREE/N=(DimSize(oprs,0)) buf=preopr+oprs
-	if(DimSize(buf,0))
-		CommandPanel_SetBuffer(buf)
-		CommandPanel_SetLine(buf[0])	
-	endif
-End
-
-// for the second or any later word
-override Function CompleteFunctionName()
-	String line=CommandPanel_GetLine(),prefnc,fnc
-	SplitString/E="^(.*?)((?<!\\w)[A-Za-z]\\w*)$" line,prefnc,fnc
-	String list=FunctionList(fnc+"*",";","KIND:3")
-	Make/FREE/T/N=(ItemsInList(list)) fncs=StringFromList(p,list)
-	Extract/T/FREE fncs,fncs,StringMatch(fncs,fnc+"*")
-	Make/T/FREE/N=(DimSize(fncs,0)) buf=prefnc+fncs
-	if(DimSize(buf,0))
-		CommandPanel_SetBuffer(buf)
-		CommandPanel_SetLine(buf[0])	
-	endif
-End
-
-#endif
-
-//------------------------------------------------------------------------------
-// original file: CommandPanel_Execute.ipf 
-//------------------------------------------------------------------------------
-#if !ItemsInList(WinList("CommandPanel_Execute.ipf",";",""))
-
-//#include "CommandPanel_Interface"
-//#include "CommandPanel_Expand"
-//#pragma ModuleName=CommandPanelExecute
-
-// history options
-constant CommandPanel_HistEraseDups = 0
-constant CommandPanel_HistIgnoreDups = 0
-constant CommandPanel_HistIgnoreSpace = 0
-strconstant CommandPanel_HistIgnore = ";"
-
-// Public Functions {{{1
-override Function CommandPanel_Execute()
-	String input    = CommandPanel_GetLine()
-	CommandPanel_SetLine("")
-	CommandPanel_GetBuffer() // reset flag
-	
-	// Prepare
-	WAVE/T history=CommandPanel#GetTextWave("history")
-	if(strlen(input)==0)
-		CommandPanel_SetBuffer(history)
-		return NaN
-	endif
-
-	// Execute
-	WAVE/T commands = CommandPanel_Expand(input)
-	if(DimSize(commands,0)==0)
-		Make/FREE/T commands = {input}
-	endif
-	Variable ref,i,N=DimSize(commands,0); String output="",error=""
-	for(i=0;i<N;i+=1)
-		print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91)+commands[i]+"\r"
-		ref = CaptureHistoryStart()
-		Execute/Z commands[i]
-		error = GetErrMessage(V_Flag)
-		print error
-		output += CaptureHistory(ref,ref)
-		if(strlen(error))
-			break
-		endif
-	endfor
-
-	// Add History
-	if(strlen(error))
-		CommandPanel_SetBuffer(history)
-		CommandPanel_SetLine(input)
-	else
-		AddHistory(ReplaceString("\\",input,"\\\\"))
-	endif
-		
-	if(strlen(output))
-		Make/FREE/T/N=(ItemsInList(output,"\r")) f=StringFromList(p,output,"\r")
-		CommandPanel_SetBuffer(f)
-	endif
-
-	if(!CommandPanel#BufferModified())
-		CommandPanel_SetBuffer(history)		
-	endif
-End
-
-
-static Function/WAVE AddHistory(command)
-	String command
-	WAVE/T history=CommandPanel#GetTextWave("history")
-	// Remove Duplications
-	if(CommandPanel_HistEraseDups)
-		Extract/T/O history,history,cmpstr(history,command)
-	elseif(CommandPanel_HistIgnoreDups && cmpstr(command,history[0]) == 0)
-		DeletePoints 0,1,history
-	endif
-	// Add History
-	InsertPoints 0,1,history; history[0]=command
-	// Ignore History
-	if(CommandPanel_HistIgnoreSpace && StringMatch(history[0]," *"))
-		DeletePoints 0,1,history
-	elseif(ItemsInList(CommandPanel_HistIgnore) && strlen(command))
-		Variable i,N=ItemsInList(CommandPanel_HistIgnore)
-		for(i=0;i<N;i+=1)
-			if(StringMatch(history[0],StringFromList(i,CommandPanel_HistIgnore)))
-				DeletePoints 0,1,history
-				break		
-			endif
-		endfor
-	endif
-	return history
-End
 
 
 #endif

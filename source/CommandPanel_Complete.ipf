@@ -6,9 +6,9 @@ Function CommandPanel_Complete()
 	WAVE/T buf=CommandPanel_GetBuffer()
 	String selrow=buf[CommandPanel_SelectedRow()]
 	if(strlen(input)==0) // empty string
-		ReadSelectedRow()	
+		ScrollBuffer(0)
 	elseif(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
-		ScrollDownBuffer()
+		ScrollBuffer(1)
 	elseif(GrepString(input,"^ ")) // beginning with whitespace
 		FilterBuffer()
 	elseif(GrepString(input,";$")) // ending with ;
@@ -24,20 +24,20 @@ Function CommandPanel_Complete()
 	endif
 End
 
-// for an empty string
-static Function ReadSelectedRow()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SelectRow(num)
-	CommandPanel_SetLine(buf[num])
+Function CommandPanel_AltComplete()
+	ScrollBuffer(-1)	
 End
 
+
+// for an empty string
 // for the same string as the selected buffer row
-static Function ScrollDownBuffer()
+static Function ScrollBuffer(n)
+	Variable n
 	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=mod(CommandPanel_SelectedRow()+1,DimSize(buf,0))
+	Variable size=DimSize(buf,0)
+	Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
 	CommandPanel_SelectRow(num)
-	CommandPanel_SetLine(buf[num])		
+	CommandPanel_SetLine(buf[num])
 End
 
 // for a string beginning with whitespace 
@@ -50,7 +50,9 @@ static Function FilterBuffer()
 		Extract/FREE/T buf,buf,GrepString(buf,pattern)
 	endfor
 	CommandPanel_SetBuffer(buf)
-	CommandPanel_SetLine("")
+	if(DimSize(buf,0))
+		CommandPanel_SetLine(buf[0])
+	endif
 End
 
 // for a string ending with ;
