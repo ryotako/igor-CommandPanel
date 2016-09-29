@@ -1,11 +1,10 @@
-#include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanel_Menu
 
 strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
-	"New Command Panel",/Q,CommandPanel_New()
+	"New Command Panel",/Q,Execute/Z "CommandPanel_New()"
 	CommandPanel_Menu#MenuItem(0),  /Q, CommandPanel_Menu#MenuCommand(0)
 	CommandPanel_Menu#MenuItem(1),  /Q, CommandPanel_Menu#MenuCommand(1)
 	CommandPanel_Menu#MenuItem(2),  /Q, CommandPanel_Menu#MenuCommand(2)
@@ -30,15 +29,12 @@ End
 
 static Function/S MenuItem(i)
 	Variable i
-	String win=CommandPanel_Interface#Target(N=i)
+	String win=StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
 	GetWindow/Z $win,wtitle
-	if(strlen(win))
-		return "\M0"+win+" ("+S_Value+")"
-	else
-		return ""
-	endif
+	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
 End
 static Function MenuCommand(i)
 	Variable i
-	DoWindow/F $CommandPanel_Interface#Target(N=i)
+	DoWindow/F $StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
 End
+
