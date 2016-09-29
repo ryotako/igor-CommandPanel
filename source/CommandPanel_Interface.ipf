@@ -22,9 +22,6 @@ static strconstant CommandPanel_WinName = "CommandPanel"
 // Static Functios {{{1
 // Panel {{{2
 Function CommandPanel_New()
-	// building window
-	PauseUpdate
-	Silent 1
 	// make panel
 	Variable width  = CommandPanel_WinWidth
 	Variable height = CommandPanel_WinHeight
@@ -34,12 +31,7 @@ Function CommandPanel_New()
 	SetControls()
 	CommandPanel_SetLine("")
 	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
-	DoUpdate
 	ActivateLine()
-	// init alias
-	if(DimSize(CommandPanel_Alias(""),0)==0)
-		CommandPanel_Alias("alias=CommandPanel_Alias")
-	endif
 End
 static Function/S NewName()
 	String wins=WinList(CommandPanel_WinName+"*",";","WIN:64")

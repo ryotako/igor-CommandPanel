@@ -13,7 +13,12 @@ Function CommandPanel_Execute()
 	String input    = CommandPanel_GetLine()
 	CommandPanel_SetLine("")
 	CommandPanel_GetBuffer() // reset flag
-	
+
+	// init alias
+	if(DimSize(CommandPanel_Alias(""),0)==0)
+		CommandPanel_Alias("alias=CommandPanel_Alias")
+	endif
+
 	// Prepare
 	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
 	if(strlen(input)==0)

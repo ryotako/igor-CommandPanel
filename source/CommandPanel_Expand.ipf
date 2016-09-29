@@ -2,7 +2,6 @@
 #include ":CommandPanel_Interface"
 #pragma ModuleName=CommandPanelExpand
 
-
 static Function/WAVE return(s)
 	String s
 	return writer#cons(s,$"")
@@ -10,9 +9,6 @@ End
 static Function/WAVE bind(w,f)
 	WAVE/T w; FUNCREF Writer_ProtoTypeSplit f
 	return writer#concatMap(f,w)
-End
-static Function/WAVE void()
-	Make/FREE/T/N=0 w; return w
 End
 
 // Public Functions
@@ -39,7 +35,7 @@ End
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	if(writer#null(w))
-		return void()
+		return writer#cast($"")
 	endif
 	Variable len=strlen(writer#head(w))
 	return writer#cons(s[0,len-1],SplitAs(s[len,inf],writer#tail(w)))
@@ -62,7 +58,7 @@ End
 static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
 	if(writer#null(w1))
-		return void()
+		return writer#cast($"")
 	endif
 	Make/FREE/T/N=(DimSize(w2,0)) f=writer#head(w1)+w2
 	return writer#extend(f,product(writer#tail(w1),w2))
@@ -194,7 +190,7 @@ static Function/WAVE Alias(input)
 		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
 		SetAliasWave(alias)
 	endif
-	return void()
+	return writer#cast($"")
 End
 
 static Function/WAVE GetAliasWave()
@@ -202,7 +198,7 @@ static Function/WAVE GetAliasWave()
 	if(WaveExists(w))
 		return w
 	endif
-	return void()
+	return writer#cast($"")
 End
 static Function/WAVE SetAliasWave(w)
 	WAVE/T w
