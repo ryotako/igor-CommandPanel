@@ -2,9 +2,11 @@
 #pragma ModuleName=CommandPanelComplete
 
 Function CommandPanel_Complete()
-	String input=CommandPanel_GetLine()
+	String input=CommandPanel_GetLine(), selrow=""
 	WAVE/T buf=CommandPanel_GetBuffer()
-	String selrow=buf[CommandPanel_SelectedRow()]
+	if(DimSize(buf,0)>0)
+		selrow=buf[CommandPanel_SelectedRow()]
+	endif
 	if(strlen(input)==0) // empty string
 		ScrollBuffer(0)
 	elseif(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
@@ -45,14 +47,14 @@ End
 // for a string beginning with whitespace 
 static Function FilterBuffer()
 	Duplicate/FREE/T CommandPanel_GetBuffer() buf
-	String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
-	Variable i,N=ItemsInList(patterns," ")
-	for(i=0;i<N;i+=1)
-		String pattern=StringFromList(i,patterns," ")
-		Extract/FREE/T buf,buf,GrepString(buf,pattern)
-	endfor
-	CommandPanel_SetBuffer(buf)
-	if(DimSize(buf,0))
+	if(DimSize(buf,0)>0)
+		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
+		Variable i,N=ItemsInList(patterns," ")
+		for(i=0;i<N;i+=1)
+			String pattern=StringFromList(i,patterns," ")
+			Extract/FREE/T buf,buf,GrepString(buf,pattern)
+		endfor
+		CommandPanel_SetBuffer(buf)
 		CommandPanel_SetLine(buf[0])
 	endif
 End
@@ -100,6 +102,7 @@ Function CompleteOperationName()
 		CommandPanel_SetLine(buf[0])	
 	endif
 End
+
 
 // for the second or any later word
 Function CompleteFunctionName()
