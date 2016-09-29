@@ -106,14 +106,14 @@ static Function LineAction(line)
 			SetVariable CPLine,win=$line.win,activate
 			break
 		case 2: // Shift + Enter
-			if(!PossiblyScrollBuffer(1))
-				if(GrepString(line.sval,"^ "))
-					NarrowBuffer()
-				else
+//			if(!PossiblyScrollBuffer(1))
+//				if(GrepString(line.sval,"^ "))
+//					NarrowBuffer()
+//				else
 					Execute/Z/Q CommandPanel_Complete
 					SetVariable CPLine,win=$line.win,activate
-				endif
-			endif
+//				endif
+//			endif
 			break
 		case 4: // Alt + Enter
 			PossiblyScrollBuffer(-1)
@@ -138,9 +138,13 @@ Function CommandPanel_SetBuffer(w)
 	Variable/G $bufflg=1
 	ListBox CPBuffer, win=$Target(), row=0, selrow=0
 End
-Function CommandPanel_GetSelectedRow()
+Function CommandPanel_SelectedRow()
 	ControlInfo/W=$Target() CPBuffer
 	return V_Value
+End
+Function CommandPanel_SelectRow(n)
+	Variable n
+	ListBox CPBuffer, win=$Target(), row=n, selrow=n
 End
 
 static Function BufferAction(buffer)
@@ -148,12 +152,12 @@ static Function BufferAction(buffer)
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
 		SetControls()
 		ActivateLine()
-		endif
+	endif
 	if(buffer.eventCode==1)//Send a selected string by a click. 
 		ActivateLine()
 	endif
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-			CommandPanel_SetLine(buffer.listWave[buffer.row])
+		CommandPanel_SetLine(buffer.listWave[buffer.row])
 		ActivateLine()	
 	endif
 End
