@@ -37,7 +37,7 @@ static Function ScrollBuffer(n)
 	Variable n
 	WAVE/T buf=CommandPanel_GetBuffer()
 	Variable size=DimSize(buf,0)
-	if(size>0)
+	if(size)
 		Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
 		CommandPanel_SelectRow(num)
 		CommandPanel_SetLine(buf[num])
@@ -64,8 +64,10 @@ static Function JointSelectedRow()
 	String line=CommandPanel_GetLine()
 	WAVE/T buf=CommandPanel_GetBuffer()
 	Variable num=CommandPanel_SelectedRow()
-	CommandPanel_SetLine(line+buf[num+1])
-	CommandPanel_SelectRow(num+1)
+	if(DimSize(buf,0))
+		CommandPanel_SetLine(line+buf[num+1])
+		CommandPanel_SelectRow(num+1)
+	endif
 End
 
 // for a pathname

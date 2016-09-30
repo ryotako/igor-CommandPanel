@@ -10,14 +10,14 @@ strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
 Function CommandPanel_Execute()
-	String input    = CommandPanel_GetLine()
-	CommandPanel_SetLine("")
-	CommandPanel_GetBuffer() // reset flag
-
 	// init alias
 	if(DimSize(CommandPanel_Alias(""),0)==0)
 		CommandPanel_Alias("alias=CommandPanel_Alias")
 	endif
+
+	String input = CommandPanel_GetLine()
+	CommandPanel_SetLine("")
+	CommandPanel_GetBuffer() // reset flag
 
 	// Prepare
 	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
