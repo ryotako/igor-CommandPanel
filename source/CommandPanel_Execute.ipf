@@ -1,6 +1,7 @@
-#include "CommandPanel_Interface"
-#include "CommandPanel_Expand"
-#pragma ModuleName=CommandPanelExecute
+#include ":CommandPanel_Interface"
+#include ":CommandPanel_Expand"
+#include "writer"
+#pragma ModuleName=CommandPanel_Execute
 
 // history options
 constant CommandPanel_HistEraseDups = 0
@@ -9,60 +10,81 @@ constant CommandPanel_HistIgnoreSpace = 0
 strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
-Function CommandPanel_Execute()
-	// init alias
-	if(DimSize(CommandPanel_Alias(""),0)==0)
-		CommandPanel_Alias("alias=CommandPanel_Alias")
-	endif
+static Function Exec()
+	// initialize
+	InitAlias()
+	CommandPanel_SetBuffer(writer#cast($""))
 
-	String input = CommandPanel_GetLine()
-	CommandPanel_SetLine("")
-	CommandPanel_GetBuffer() // reset flag
-
-	// Prepare
-	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
+	// get command
+	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
-		CommandPanel_SetBuffer(history)
+		ShowHistory()
 		return NaN
 	endif
 
-	// Execute
-	WAVE/T commands = CommandPanel_Expand(input)
+	// expand command
+	WAVE/T cmds =CommandPanel_Expand#Expand(input)
 	if(DimSize(commands,0)==0)
-		Make/FREE/T commands = {input}
+		Make/FREE/T cmds = {input}
 	endif
-	Variable ref,i,N=DimSize(commands,0); String output="",error=""
+
+	// execute command
+	Variable ref,i,N=DimSize(cmds,0)
+	String output="",error=""
 	for(i=0;i<N;i+=1)
-		print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91)+commands[i]+"\r"
+		PrintCommand(cmds[i])
+		
 		ref = CaptureHistoryStart()
-		Execute/Z commands[i]
+		Execute/Z cmds[i]
 		error = GetErrMessage(V_Flag)
 		print error
 		output += CaptureHistory(ref,ref)
-		if(strlen(error))
+		
+		if(strlen(error)) // when an error occurs, stop execution 
 			break
 		endif
 	endfor
-
-	// Add History
-	if(strlen(error))
-		CommandPanel_SetBuffer(history)
-		CommandPanel_SetLine(input)
+	
+	// history
+	if(!strlen(error))
+		AddHistory(input)
+		CommandPanel_SetLine("")
+	endif
+	
+	// output
+	wAVE/T buf=CommandPanel_GetBuffer()
+	WAVE/T out=writer#split(output,"\r")
+	if(DimSize(buf,0)>0)
+		return NaN
+	elseif(DimSize(out,0)==1 && strlen(out[0])==0)
+		ShowHistory()
 	else
-		AddHistory(ReplaceString("\\",input,"\\\\"))
-	endif
-		
-	if(strlen(output))
-		Make/FREE/T/N=(ItemsInList(output,"\r")) f=StringFromList(p,output,"\r")
-		CommandPanel_SetBuffer(f)
-	endif
-
-	if(!CommandPanel_Interface#BufferModified())
-		CommandPanel_SetBuffer(history)		
+		CommandPanel_SetBuffer(out)
 	endif
 End
 
+// Util
+static Function PrintCommand(s)
+	String s
+	print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91)+s+"\r"
+End
 
+// Alias
+static Function Alias(s)
+	String s
+	if(strlen(s))
+		return CommandPanel_Expand#SetAlias(s)		
+	endif
+	CommandPanel_SetBuffer( CommandPanel_Interface#GetTextWave("alias") )
+End 
+static Function InitAlias()
+	WAVE/T w=CommandPanel_Expand#GetAlias()
+	if(DimSize(w,0)==0)
+		CommandPanel_Expand#SetAlias("alias=CommandPanel_Execute#Alias")
+	endif
+End
+
+// History
 static Function/WAVE AddHistory(command)
 	String command
 	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
@@ -89,3 +111,6 @@ static Function/WAVE AddHistory(command)
 	return history
 End
 
+static Function ShowHistory()
+	CommandPanel_SetBuffer( CommandPanel_Interface#GetTextWave("history") )
+End
