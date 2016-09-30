@@ -13,7 +13,6 @@ constant    CommandPanel_WinWidth   = 300
 strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 // Behavior
 constant    CommandPanel_KeySwap    = 0
-constant    CommandPanel_IgnoreCase = 1
 
 
 // Constants {{{1
@@ -94,13 +93,13 @@ static Function LineAction(line)
 		endif
 		switch(key)
 		case 0: // Enter
-			CommandPanel_Execute()
+			CommandPanel_Execute#Exec()
 			break
 		case 2: // Shift + Enter
-			CommandPanel_Complete()
+			CommandPanel_Complete#Complete()
 			break
 		case 4: // Alt + Enter
-			CommandPanel_AltComplete()
+			CommandPanel_Complete#AltComplete()
 			break
 		endswitch
 	endif

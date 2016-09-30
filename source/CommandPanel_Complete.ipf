@@ -1,16 +1,17 @@
-#include "CommandPanel_Interface"
-#pragma ModuleName=CommandPanelComplete
+#include ":CommandPanel_Interface"
+#include ":CommandPanel_Expand"
+#pragma ModuleName=CommandPanel_Complete
 
-Function CommandPanel_Complete()
+static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
 	WAVE/T buf=CommandPanel_GetBuffer()
 	if(DimSize(buf,0)>0)
 		selrow=buf[CommandPanel_SelectedRow()]
 	endif
-	if(strlen(input)==0) // empty string
-		ScrollBuffer(0)
-	elseif(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
+	if(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
 		ScrollBuffer(1)
+	elseif(strlen(input)==0) // empty string
+		ScrollBuffer(0)
 	elseif(GrepString(input,"^ ")) // beginning with whitespace
 		FilterBuffer()
 	elseif(GrepString(input,";$")) // ending with ;
@@ -26,7 +27,7 @@ Function CommandPanel_Complete()
 	endif
 End
 
-Function CommandPanel_AltComplete()
+static Function AltComplete()
 	ScrollBuffer(-1)	
 End
 
@@ -51,7 +52,7 @@ static Function FilterBuffer()
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
 		Variable i,N=ItemsInList(patterns," ")
 		for(i=0;i<N;i+=1)
-			String pattern=StringFromList(i,patterns," ")
+			String pattern="(?i)"+StringFromList(i,patterns," ")
 			Extract/FREE/T buf,buf,GrepString(buf,pattern)
 		endfor
 		CommandPanel_SetBuffer(buf)
@@ -93,18 +94,22 @@ End
 // for the first word
 // TODO: alias completion
 Function CompleteOperationName()
-	String line=CommandPanel_GetLine(),preopr,opr
-	SplitString/E="(.*;)? *([A-Za-z]\\w*)$" line,preopr,opr
-	String list=FunctionList(opr+"*",";","KIND:2")+OperationList(opr+"*",";","all")
+	String line=CommandPanel_GetLine(),pre,word
+	SplitString/E="(.*;)? *([A-Za-z]\\w*)$" line,pre,word
+	
+	String list=FunctionList(word+"*",";","KIND:2")+OperationList(word+"*",";","all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs=StringFromList(p,list)
-	Extract/T/FREE oprs,oprs,StringMatch(oprs,opr+"*")
-	Make/T/FREE/N=(DimSize(oprs,0)) buf=preopr+oprs
+	
+	Make/FREE/T/N=0 buf
+	Concatenate/T {CommandPanel_Expand#GetAliasNames(),oprs},buf
+	
+	Extract/T/FREE buf,buf,StringMatch(buf,word+"*")
+	buf=pre+buf
 	if(DimSize(buf,0))
 		CommandPanel_SetBuffer(buf)
 		CommandPanel_SetLine(buf[0])	
 	endif
 End
-
 
 // for the second or any later word
 Function CompleteFunctionName()
