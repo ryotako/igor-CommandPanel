@@ -81,7 +81,7 @@ override strconstant CommandPanel_Font       = "Arial"
 override constant    CommandPanel_Fontsize   = 12
 override constant    CommandPanel_WinHeight  = 300
 override constant    CommandPanel_WinWidth   = 300
-override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
+override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
 
 override constant    CommandPanel_KeySwap    = 0
 
@@ -276,6 +276,9 @@ End
 //#include ":CommandPanel_Expand"
 //#pragma ModuleName=CommandPanel_Complete
 
+override constant CommandPanel_IgnoreCase = 1
+
+
 static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
 	WAVE/T buf=CommandPanel_GetBuffer()
@@ -326,11 +329,16 @@ static Function FilterBuffer()
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
 		Variable i,N=ItemsInList(patterns," ")
 		for(i=0;i<N;i+=1)
-			String pattern="(?i)"+StringFromList(i,patterns," ")
+			String pattern=StringFromList(i,patterns," ")
+			if(CommandPanel_IgnoreCase)
+				pattern="(?i)"+pattern
+			endif
 			Extract/FREE/T buf,buf,GrepString(buf,pattern)
 		endfor
 		CommandPanel_SetBuffer(buf)
-		CommandPanel_SetLine(buf[0])
+		if(DimSize(buf,0)>0)
+			CommandPanel_SetLine(buf[0])
+		endif
 	endif
 End
 

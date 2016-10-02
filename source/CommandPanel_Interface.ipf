@@ -9,7 +9,7 @@ strconstant CommandPanel_Font       = "Arial"
 constant    CommandPanel_Fontsize   = 12
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300
-strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
+strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
 
 constant    CommandPanel_KeySwap    = 0
 
