@@ -1256,6 +1256,8 @@ static Function ExecuteWithLog()
 	else		
 		ShowHistory()
 	endif
+	
+	DoWindow/F $CommandPanel#GetWinName()
 End
 
 // expand input and execute
