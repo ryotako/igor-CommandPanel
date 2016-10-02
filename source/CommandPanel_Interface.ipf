@@ -44,6 +44,7 @@ Function CommandPanel_SetBuffer(w)
 	buf = ReplaceString("\\",w,"\\\\")
 	SetTextWave("buffer",buf)
 	ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+	SetBufferChangedFlag(1)
 End
 
 Function CommandPanel_SelectedRow()
@@ -55,7 +56,6 @@ Function CommandPanel_SelectRow(n)
 	Variable n
 	ListBox CPBuffer, win=$GetWinName(), row=n, selrow=n
 End
-
 
 // Static Functions
 // Window Name
@@ -159,6 +159,17 @@ static Function SetTextWave(name,w)
 	if(!WaveRefsEqual(f,w))
 		Duplicate/T/O w f
 	endif
+End
+
+static Function SetBufferChangedFlag(n)
+	Variable n
+	NewDataFolder/O root:Packages
+	NewDataFolder/O root:Packages:CommandPanel
+	Variable/G root:Packages:CommandPanel:V_BufferChangedFlag=n
+End
+static Function GetBufferChangedFlag()
+	NVAR v=root:Packages:CommandPanel:V_BufferChangedFlag
+	return NVAR_Exists(v) && v!=0
 End
 
 // WinTitle

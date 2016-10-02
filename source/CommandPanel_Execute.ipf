@@ -9,12 +9,12 @@ constant CommandPanel_HistIgnoreDups = 0
 constant CommandPanel_HistIgnoreSpace = 0
 strconstant CommandPanel_HistIgnore = ";"
 
-// Public Functions {{{1
+
 static Function Exec()
 	// initialize
 	InitAlias()
-	CommandPanel_SetBuffer(writer#cast($""))
-
+	CommandPanel_Interface#SetBufferChangedFlag(0)
+	
 	// get command
 	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
@@ -52,14 +52,12 @@ static Function Exec()
 	endif
 	
 	// output
-	wAVE/T buf=CommandPanel_GetBuffer()
-	WAVE/T out=writer#split(output,"\r")
-	if(DimSize(buf,0)>0)
+	if( CommandPanel_Interface#GetBufferChangedFlag() )
 		return NaN
-	elseif(DimSize(out,0)==1 && strlen(out[0])==0)
+	elseif( strlen(output) )
+		CommandPanel_SetBuffer( writer#split(output,"\r") )
+	else		
 		ShowHistory()
-	else
-		CommandPanel_SetBuffer(out)
 	endif
 End
 

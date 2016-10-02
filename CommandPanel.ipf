@@ -116,6 +116,7 @@ override Function CommandPanel_SetBuffer(w)
 	buf = ReplaceString("\\",w,"\\\\")
 	SetTextWave("buffer",buf)
 	ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+	SetBufferChangedFlag(1)
 End
 
 override Function CommandPanel_SelectedRow()
@@ -127,7 +128,6 @@ override Function CommandPanel_SelectRow(n)
 	Variable n
 	ListBox CPBuffer, win=$GetWinName(), row=n, selrow=n
 End
-
 
 // Static Functions
 // Window Name
@@ -231,6 +231,17 @@ static Function SetTextWave(name,w)
 	if(!WaveRefsEqual(f,w))
 		Duplicate/T/O w f
 	endif
+End
+
+static Function SetBufferChangedFlag(n)
+	Variable n
+	NewDataFolder/O root:Packages
+	NewDataFolder/O root:Packages:CommandPanel
+	Variable/G root:Packages:CommandPanel:V_BufferChangedFlag=n
+End
+static Function GetBufferChangedFlag()
+	NVAR v=root:Packages:CommandPanel:V_BufferChangedFlag
+	return NVAR_Exists(v) && v!=0
 End
 
 // WinTitle
@@ -1177,12 +1188,12 @@ override constant CommandPanel_HistIgnoreDups = 0
 override constant CommandPanel_HistIgnoreSpace = 0
 override strconstant CommandPanel_HistIgnore = ";"
 
-// Public Functions {{{1
+
 static Function Exec()
 	// initialize
 	InitAlias()
-	CommandPanel_SetBuffer(CommandPanel#cast($""))
-
+	CommandPanel#SetBufferChangedFlag(0)
+	
 	// get command
 	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
@@ -1220,14 +1231,12 @@ static Function Exec()
 	endif
 	
 	// output
-	wAVE/T buf=CommandPanel_GetBuffer()
-	WAVE/T out=CommandPanel#split(output,"\r")
-	if(DimSize(buf,0)>0)
+	if( CommandPanel#GetBufferChangedFlag() )
 		return NaN
-	elseif(DimSize(out,0)==1 && strlen(out[0])==0)
+	elseif( strlen(output) )
+		CommandPanel_SetBuffer( CommandPanel#split(output,"\r") )
+	else		
 		ShowHistory()
-	else
-		CommandPanel_SetBuffer(out)
 	endif
 End
 
