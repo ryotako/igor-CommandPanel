@@ -121,19 +121,28 @@ override Function CommandPanel_SetBuffer(w)
 		Duplicate/FREE/T w buf
 		buf = ReplaceString("\\",w,"\\\\")
 		SetTextWave("buffer",buf)
-		ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+		ListBox CPBuffer, win=$win, row=0, selrow=0
 		SetFlag("BufferChanged",1)
 	endif
 End
 
 override Function CommandPanel_SelectedRow()
-	ControlInfo/W=$GetWinName() CPBuffer
-	return V_Value
+	Variable n
+	String win=GetWinName()
+	if(strlen(win))
+		ControlInfo/W=$win CPBuffer
+		return V_Value
+	else
+		return NaN
+	endif
 End
 
 override Function CommandPanel_SelectRow(n)
 	Variable n
-	ListBox CPBuffer, win=$GetWinName(), row=n, selrow=n
+	String win=GetWinName()
+	if(strlen(win))
+		ListBox CPBuffer, win=$win, row=n, selrow=n
+	endif
 End
 
 // Static Functions
