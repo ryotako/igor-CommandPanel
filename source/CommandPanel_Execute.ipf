@@ -60,6 +60,8 @@ static Function ExecuteWithLog()
 	else		
 		ShowHistory()
 	endif
+	
+	DoWindow/F $CommandPanel_interface#GetWinName()
 End
 
 // expand input and execute
