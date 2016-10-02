@@ -5,14 +5,16 @@
 
 static Function/WAVE Expand(input)
 	String input
-	WAVE w1=writer#concatMap(StrongLineSplit,{input})
-	WAVE w2=writer#concatMap(ExpandAlias        ,w1 )
-	WAVE w3=writer#concatMap(ExpandBrace        ,w2 )
-	WAVE w4=writer#concatMap(ExpandPath         ,w3 )
-	WAVE w5=writer#concatMap(WeakLineSplit      ,w4 )
-	WAVE w6=writer#concatMap(CompleteParen      ,w5 )
-	WAVE w7=writer#concatMap(RemoveEscapeWhole  ,w6 )
-	return w7
+	WAVE/T w1=writer#concatMap(StrongLineSplit,{input})
+	WAVE/T w2=writer#concatMap(ExpandAlias        ,w1 )
+	WAVE/T w3=writer#concatMap(ExpandBrace        ,w2 )
+	w3 = UnescapeBraces(w3)
+	WAVE/T w4=writer#concatMap(ExpandPath         ,w3 )
+	WAVE/T w5=writer#concatMap(WeakLineSplit      ,w4 )
+	WAVE/T w6=writer#concatMap(CompleteParen      ,w5 )
+	w6 = UnescapeBackquotes(w6)
+
+	return w6
 End
 
 
@@ -50,75 +52,55 @@ static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2
 End
 
 
-// 0,7 Escape Sequence {{{1
+// 0. Escape Sequence {{{1
+// mask
 static strconstant M ="|" // one character for masking
 static Function/S Mask(input)
 	String input
-	input = MaskExpr(input,"(//.*)$") // //
-	input = MaskExpr(input,"(\\\\\\\\)") // \
-	input = MaskExpr(MaskExpr(input,"(\\\\`)" ),"(`[^`]*`)"   ) // `
-	input = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // "
-	input = MaskExpr(input,trim("(\\\\{ | \\\\} | \\\\,)")) // {},
+	// mask comment
+	input=writer#gsub(input,"//.*$","",proc=MaskAll)
+	// mask with ``
+	input=writer#gsub(input,"\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc=MaskAll)
+	// mask with ""
+	input=writer#gsub(input,"\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc=MaskAll)
+	// mask with \
+	input=writer#gsub(input,"\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc=MaskAll)
 	return input
 End
-static Function/S MaskExpr(s,expr)
-	String s,expr
-	WAVE/T w=writer#partition(s,expr)
-	if(strlen(w[1])==0)
-		return s
-	endif
-	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
-End
-static Function/S RepeatChar(c,n)
-	String c; Variable n
-	if(NumType(n)||n<=0)
-		return ""
-	endif
-	return c[0]+RepeatChar(c,n-1)
+static Function/S MaskAll(s)
+	String s
+	Variable i; String buf=""
+	for(i=0;i<strlen(s);i+=1)
+		buf+=M
+	endfor
+	return buf
 End
 
-static Function/WAVE RemoveEscapeSeqBrace(input)
+// unascape
+static Function/S UnescapeBraces(input)
 	String input
-	String ref
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\{",input,"{",ref)
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\}",input,"}",ref)
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\,",input,",",ref)
-	return writer#cast(input)
-End
-static Function/WAVE RemoveEscapeWhole(input)
-	String input
-	String ref = input
-	ref = ReplaceString("\\\\",input,M+M)
-	ref = ReplaceString("\\`" ,input,M+M)
-	input = ReplaceByRef("`",input,"",ref)	
-	input = ReplaceString("\\`",input,"`")
-	return writer#cast({input})
-End
-static Function/S ReplaceByRef(before,input,after,ref)
-	String before,input,after,ref
-	do
-		Variable pos=strsearch(ref,before,inf,1)
-		if(pos>=0)
-			input = input[0,pos-1]+after+input[pos+strlen(before),inf]
-			ref   = ref  [0,pos-1]+after+ref  [pos+strlen(before),inf]
-		else
-			break
-		endif
-	while(1)
+	String ignore="//.*$|\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"|"
+	input=writer#gsub(input,ignore+"\\\\{","",proc=UnescapeBrace)
+	input=writer#gsub(input,ignore+"\\\\}","",proc=UnescapeBrace)
+	input=writer#gsub(input,ignore+"\\\\,","",proc=UnescapeBrace)
 	return input
 End
+static Function/S UnescapeBrace(s)
+	String s
+	return SelectString(GrepString(s,"^\\\\[^\\\\`]$"),s,s[1])
+End
+
+static Function/S UnescapeBackquotes(input)
+	String input
+	return writer#gsub(input,"//.*$|\\\\\\\\|\\\\`","",proc=UnescapeBackquote)
+End
+static Function/S UnescapeBackquote(s)
+	String s
+	return SelectString(GrepString(s,"^\\\\[^\\\\]$"),s,s[1])
+End
 
 
-// 1,5 Line Split {{{1
+// 1,5. Line Split
 static Function/WAVE LineSplitBy(delim,input)
 	String delim,input
 	Variable pos = strsearch(mask(input),delim,0)
@@ -218,6 +200,7 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 		return writer#cast({w[1]})
 	endif
 End
+
 static Function/WAVE ExpandNumberSeries(input)
 	String input
 	WAVE/T w=writer#partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
@@ -233,6 +216,7 @@ static Function/WAVE ExpandNumberSeries(input)
 	s=RemoveEnding(s,",")
 	return writer#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+writer#head(ExpandNumberSeries(w[2]))})
 End
+
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
 	WAVE/T w=writer#partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
@@ -361,7 +345,7 @@ End
 // 6. Complete Parenthesis
 static Function/WAVE CompleteParen(input)
 	String input
-	String ref = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // escape with ""
+	String ref = writer#gsub(writer#gsub(input,"(\\\\\")","",proc=MaskAll),"(\"[^\"]*\")","",proc=MaskAll)
 	WAVE/T w=SplitAs(input,writer#partition(ref,"\\s(//.*)?$")) // command, comment, ""
 	WAVE/T f=writer#partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
@@ -370,13 +354,5 @@ static Function/WAVE CompleteParen(input)
 	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
 		f[2]="\""+f[2]+"\""
 	endif
-	return writer#cast({RemoveEndings(f[1]," ")+"("+f[2]+")"+w[1]})
-End
-static Function/S RemoveEndings(s,ending)
-	String s,ending
-	String buf=RemoveEnding(s,ending)
-	if(strlen(buf)==strlen(s))
-		return buf
-	endif
-	return RemoveEndings(buf,ending)
+	return writer#cast({writer#sub(f[1]," *$","")+"("+f[2]+")"+w[1]})
 End

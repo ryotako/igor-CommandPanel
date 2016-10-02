@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Sat,01 Oct 2016
+// Sun,02 Oct 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -24,7 +24,7 @@
 
 //#pragma ModuleName=CommandPanel_Menu
 
-strconstant CommandPanel_Menu = "CommandPanel"
+override strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
@@ -71,53 +71,87 @@ End
 #if !ItemsInList(WinList("CommandPanel_Interface.ipf",";",""))
 
 //#pragma ModuleName=CommandPanel_Interface
-//#include "CommandPanel_Complete"
-//#include "CommandPanel_Execute"
-//#include "CommandPanel_Expand"
+//#include ":CommandPanel_Complete"
+//#include ":CommandPanel_Execute"
+//#include ":CommandPanel_Expand"
 //#include "Writer"
 
-// Options {{{1
-// Appearance
-strconstant CommandPanel_Font       = "Arial"
-constant    CommandPanel_Fontsize   = 12
-constant    CommandPanel_WinHeight  = 300
-constant    CommandPanel_WinWidth   = 300
-strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
-// Behavior
-constant    CommandPanel_KeySwap    = 0
+// Options
+override strconstant CommandPanel_Font       = "Arial"
+override constant    CommandPanel_Fontsize   = 12
+override constant    CommandPanel_WinHeight  = 300
+override constant    CommandPanel_WinWidth   = 300
+override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
 
+override constant    CommandPanel_KeySwap    = 0
 
-// Constants {{{1
-static strconstant CommandPanel_WinName = "CommandPanel"
+// Public Functions
 
-// Static Functios {{{1
-// Panel {{{2
 override Function CommandPanel_New()
-	// make panel
-	Variable width  = CommandPanel_WinWidth
-	Variable height = CommandPanel_WinHeight
-	String   name   = UniqueName(CommandPanel_WinName,9,0)
-	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#NewName()
-	// make controls
-	SetControls()
+	MakePanel()
+	MakeControls()
 	CommandPanel_SetLine("")
 	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
-	ActivateLine()
 End
-static Function/S NewName()
-	String wins=WinList(CommandPanel_WinName+"*",";","WIN:64")
-	Make/FREE/T/N=(ItemsInList(wins)+1) f=CommandPanel_WinName+Num2Str(p)
+
+override Function/S CommandPanel_GetLine()
+	ControlInfo/W=$GetWinName() CPLine
+	return SelectString(strlen(S_Value)>0,"",S_Value)
+End
+
+override Function CommandPanel_SetLine(str)
+	String str
+ 	SetVariable CPLine,win=$GetWinName(),value= _STR:str
+End
+
+override Function/WAVE CommandPanel_GetBuffer()
+	Duplicate/FREE/T GetTextWave("buffer") w
+	w = ReplaceString("\\\\",w,"\\")
+	return w
+End
+
+override Function CommandPanel_SetBuffer(w)
+	WAVE/T w
+	Duplicate/FREE/T w buf
+	buf = ReplaceString("\\",w,"\\\\")
+	SetTextWave("buffer",buf)
+	ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+End
+
+override Function CommandPanel_SelectedRow()
+	ControlInfo/W=$GetWinName() CPBuffer
+	return V_Value
+End
+
+override Function CommandPanel_SelectRow(n)
+	Variable n
+	ListBox CPBuffer, win=$GetWinName(), row=n, selrow=n
+End
+
+
+// Static Functions
+// Window Name
+static Function/S SetWinName()
+	String wins=WinList("CommandPanel"+"*",";","WIN:64")
+	Make/FREE/T/N=(ItemsInList(wins)+1) f="CommandPanel"+Num2Str(p)
 	Extract/FREE/T f,f,WhichListItem(f,wins)<0
 	return f[0]
 End
-static Function/S Target([N])
-	Variable N
-	N = NumType(N) || N<0 ? 0 : N
-	return StringFromList(N,WinList(CommandPanel_WinName+"*",";","WIN:64"))
+
+static Function/S GetWinName()
+	return StringFromList(0,WinList("CommandPanel"+"*",";","WIN:64"))
 End
 
-static Function SetControls()
-	String win=Target()
+// Make a panel and controls
+static Function MakePanel()
+	Variable width  = CommandPanel_WinWidth
+	Variable height = CommandPanel_WinHeight
+	String   name   = UniqueName("CommandPanel",9,0)
+	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel#SetWinName()
+End
+
+static Function MakeControls()
+	String win=GetWinName()
 	// Title
 	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
 	// Set Control Actions
@@ -136,27 +170,14 @@ static Function SetControls()
 	SetVariable CPLine, win=$win, fSize= CommandPanel_FontSize
 	ListBox   CPBuffer, win=$win, fSize= CommandPanel_FontSize
 	// Other Settings
-	ListBox CPBuffer, win=$win, mode=2, listWave=CommandPanel_GetBuffer()
+	ListBox CPBuffer, win=$win, mode=2, listWave=root:Packages:CommandPanel:buffer
 End
 
-// Command Line {{{2
-Function/S CommandPanel_GetLine()
-	ControlInfo/W=$Target() CPLine
-	return SelectString(strlen(S_Value)>0,"",S_Value)
-End
-override Function CommandPanel_SetLine(str)
-	String str
- 	SetVariable CPLine,win=$Target(),value= _STR:str
-End
-
-static Function/S ActivateLine()
-	SetVariable CPLine,win=$Target(),activate
-End
-
+// Control Actions
 static Function LineAction(line)
 	STRUCT WMSetVariableAction &line
 	if(line.eventCode>0)
-		CommandPanel#SetControls()
+		MakeControls()
 	endif
 		if(line.eventCode==2)
 	Variable key=line.eventMod
@@ -175,31 +196,7 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	ActivateLine()
-End
-
-// Buffer {{{2
-static strconstant bufflg=root:Packages:CommandPanel:V_BufferModified
-Function/WAVE CommandPanel_GetBuffer()
-	NVAR flag=$bufflg
-	if(NVAR_Exists(flag))
-		flag=0
-	endif
-	return GetTextWave("buffer")
-End
-override Function CommandPanel_SetBuffer(w)
-	WAVE/T w
-	SetTextWave("buffer",w)
-	Variable/G $bufflg=1
-	ListBox CPBuffer, win=$Target(), row=0, selrow=0
-End
-override Function CommandPanel_SelectedRow()
-	ControlInfo/W=$Target() CPBuffer
-	return V_Value
-End
-override Function CommandPanel_SelectRow(n)
-	Variable n
-	ListBox CPBuffer, win=$Target(), row=n, selrow=n
+	SetVariable CPLine,win=$GetWinName(),activate
 End
 
 static Function BufferAction(buffer)
@@ -208,21 +205,12 @@ static Function BufferAction(buffer)
 		CommandPanel_SetLine(buffer.listWave[buffer.row])
 	endif
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
-		SetControls()
-		ActivateLine()	
+		MakeControls()
+		SetVariable CPLine,win=$GetWinName(),activate
 	endif
 End
 
-static Function BufferModified()
-	NVAR flag=root:Packages:CommandPanel:V_BufferModified
-	if(NVAR_Exists(flag))
-		return flag
-	endif
-End
-
-
-
-// Ancillary Functions {{{2
+// Util
 static Function/WAVE GetTextWave(name)
 	String name
 	DFREF here=GetDataFolderDFR()
@@ -425,14 +413,16 @@ End
 
 static Function/WAVE Expand(input)
 	String input
-	WAVE w1=CommandPanel#concatMap(StrongLineSplit,{input})
-	WAVE w2=CommandPanel#concatMap(ExpandAlias        ,w1 )
-	WAVE w3=CommandPanel#concatMap(ExpandBrace        ,w2 )
-	WAVE w4=CommandPanel#concatMap(ExpandPath         ,w3 )
-	WAVE w5=CommandPanel#concatMap(WeakLineSplit      ,w4 )
-	WAVE w6=CommandPanel#concatMap(CompleteParen      ,w5 )
-	WAVE w7=CommandPanel#concatMap(RemoveEscapeWhole  ,w6 )
-	return w7
+	WAVE/T w1=CommandPanel#concatMap(StrongLineSplit,{input})
+	WAVE/T w2=CommandPanel#concatMap(ExpandAlias        ,w1 )
+	WAVE/T w3=CommandPanel#concatMap(ExpandBrace        ,w2 )
+	w3 = UnescapeBraces(w3)
+	WAVE/T w4=CommandPanel#concatMap(ExpandPath         ,w3 )
+	WAVE/T w5=CommandPanel#concatMap(WeakLineSplit      ,w4 )
+	WAVE/T w6=CommandPanel#concatMap(CompleteParen      ,w5 )
+	w6 = UnescapeBackquotes(w6)
+
+	return w6
 End
 
 
@@ -470,75 +460,55 @@ static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2
 End
 
 
-// 0,7 Escape Sequence {{{1
+// 0. Escape Sequence {{{1
+// mask
 static strconstant M ="|" // one character for masking
 static Function/S Mask(input)
 	String input
-	input = MaskExpr(input,"(//.*)$") // //
-	input = MaskExpr(input,"(\\\\\\\\)") // \
-	input = MaskExpr(MaskExpr(input,"(\\\\`)" ),"(`[^`]*`)"   ) // `
-	input = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // "
-	input = MaskExpr(input,trim("(\\\\{ | \\\\} | \\\\,)")) // {},
+	// mask comment
+	input=CommandPanel#gsub(input,"//.*$","",proc=MaskAll)
+	// mask with ``
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc=MaskAll)
+	// mask with ""
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc=MaskAll)
+	// mask with \
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc=MaskAll)
 	return input
 End
-static Function/S MaskExpr(s,expr)
-	String s,expr
-	WAVE/T w=CommandPanel#partition(s,expr)
-	if(strlen(w[1])==0)
-		return s
-	endif
-	return w[0]+RepeatChar(M,strlen(w[1])) + MaskExpr(w[2],expr)
-End
-static Function/S RepeatChar(c,n)
-	String c; Variable n
-	if(NumType(n)||n<=0)
-		return ""
-	endif
-	return c[0]+RepeatChar(c,n-1)
+static Function/S MaskAll(s)
+	String s
+	Variable i; String buf=""
+	for(i=0;i<strlen(s);i+=1)
+		buf+=M
+	endfor
+	return buf
 End
 
-static Function/WAVE RemoveEscapeSeqBrace(input)
+// unascape
+static Function/S UnescapeBraces(input)
 	String input
-	String ref
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\{",input,"{",ref)
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\}",input,"}",ref)
-	ref = input
-	ref = ReplaceString("\\\\",ref,M+M)
-	ref = ReplaceString("\\`" ,ref,M+M)
-	input = ReplaceByRef("\\,",input,",",ref)
-	return CommandPanel#cast(input)
-End
-static Function/WAVE RemoveEscapeWhole(input)
-	String input
-	String ref = input
-	ref = ReplaceString("\\\\",input,M+M)
-	ref = ReplaceString("\\`" ,input,M+M)
-	input = ReplaceByRef("`",input,"",ref)	
-	input = ReplaceString("\\`",input,"`")
-	return CommandPanel#cast({input})
-End
-static Function/S ReplaceByRef(before,input,after,ref)
-	String before,input,after,ref
-	do
-		Variable pos=strsearch(ref,before,inf,1)
-		if(pos>=0)
-			input = input[0,pos-1]+after+input[pos+strlen(before),inf]
-			ref   = ref  [0,pos-1]+after+ref  [pos+strlen(before),inf]
-		else
-			break
-		endif
-	while(1)
+	String ignore="//.*$|\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"|"
+	input=CommandPanel#gsub(input,ignore+"\\\\{","",proc=UnescapeBrace)
+	input=CommandPanel#gsub(input,ignore+"\\\\}","",proc=UnescapeBrace)
+	input=CommandPanel#gsub(input,ignore+"\\\\,","",proc=UnescapeBrace)
 	return input
 End
+static Function/S UnescapeBrace(s)
+	String s
+	return SelectString(GrepString(s,"^\\\\[^\\\\`]$"),s,s[1])
+End
+
+static Function/S UnescapeBackquotes(input)
+	String input
+	return CommandPanel#gsub(input,"//.*$|\\\\\\\\|\\\\`","",proc=UnescapeBackquote)
+End
+static Function/S UnescapeBackquote(s)
+	String s
+	return SelectString(GrepString(s,"^\\\\[^\\\\]$"),s,s[1])
+End
 
 
-// 1,5 Line Split {{{1
+// 1,5. Line Split
 static Function/WAVE LineSplitBy(delim,input)
 	String delim,input
 	Variable pos = strsearch(mask(input),delim,0)
@@ -638,6 +608,7 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 		return CommandPanel#cast({w[1]})
 	endif
 End
+
 static Function/WAVE ExpandNumberSeries(input)
 	String input
 	WAVE/T w=CommandPanel#partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
@@ -653,6 +624,7 @@ static Function/WAVE ExpandNumberSeries(input)
 	s=RemoveEnding(s,",")
 	return CommandPanel#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+CommandPanel#head(ExpandNumberSeries(w[2]))})
 End
+
 static Function/WAVE ExpandCharacterSeries(input)
 	String input
 	WAVE/T w=CommandPanel#partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
@@ -781,7 +753,7 @@ End
 // 6. Complete Parenthesis
 static Function/WAVE CompleteParen(input)
 	String input
-	String ref = MaskExpr(MaskExpr(input,"(\\\\\")"),"(\"[^\"]*\")") // escape with ""
+	String ref = CommandPanel#gsub(CommandPanel#gsub(input,"(\\\\\")","",proc=MaskAll),"(\"[^\"]*\")","",proc=MaskAll)
 	WAVE/T w=SplitAs(input,CommandPanel#partition(ref,"\\s(//.*)?$")) // command, comment, ""
 	WAVE/T f=CommandPanel#partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
@@ -790,15 +762,7 @@ static Function/WAVE CompleteParen(input)
 	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
 		f[2]="\""+f[2]+"\""
 	endif
-	return CommandPanel#cast({RemoveEndings(f[1]," ")+"("+f[2]+")"+w[1]})
-End
-static Function/S RemoveEndings(s,ending)
-	String s,ending
-	String buf=RemoveEnding(s,ending)
-	if(strlen(buf)==strlen(s))
-		return buf
-	endif
-	return RemoveEndings(buf,ending)
+	return CommandPanel#cast({CommandPanel#sub(f[1]," *$","")+"("+f[2]+")"+w[1]})
 End
 
 #endif
@@ -1200,10 +1164,10 @@ End
 //#pragma ModuleName=CommandPanel_Execute
 
 // history options
-constant CommandPanel_HistEraseDups = 0
-constant CommandPanel_HistIgnoreDups = 0
-constant CommandPanel_HistIgnoreSpace = 0
-strconstant CommandPanel_HistIgnore = ";"
+override constant CommandPanel_HistEraseDups = 0
+override constant CommandPanel_HistIgnoreDups = 0
+override constant CommandPanel_HistIgnoreSpace = 0
+override strconstant CommandPanel_HistIgnore = ";"
 
 // Public Functions {{{1
 static Function Exec()
