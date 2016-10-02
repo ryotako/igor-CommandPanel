@@ -2,6 +2,8 @@
 
 CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 
+**This procedure do not work in Igor Pro 7!**
+
 [Wiki(Japanese)](https://github.com/ryotako/igor-CommandPanel/wiki)
 
 ![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo.gif)
