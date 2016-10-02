@@ -11,16 +11,21 @@ strconstant CommandPanel_HistIgnore = ";"
 
 Function CommandPanel_Execute(s)
 	String s
-	Variable error; String out
-	ExpandAndExecute(s,out,error)
-	return error
+	if(strlen(s))
+		Variable error; String out
+		ExpandAndExecute(s,out,error)
+		return error
+	else
+		return 0
+	endif
 End
 
 static Function ExecuteWithLog()
 	// initialize
 	InitAlias()
-	CommandPanel_Interface#SetBufferChangedFlag(0)
-	
+	CommandPanel_Interface#SetFlag("LineChanged",0)
+	CommandPanel_Interface#SetFlag("BufferChanged",0)
+
 	// get command
 	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
@@ -42,11 +47,13 @@ static Function ExecuteWithLog()
 	// history
 	if(!error)
 		AddHistory(input)
-		CommandPanel_SetLine("")
+		if( ! CommandPanel_Interface#GetFlag("LineChanged") )
+			CommandPanel_SetLine("")
+		endif
 	endif
 	
 	// output
-	if( CommandPanel_Interface#GetBufferChangedFlag() )
+	if( CommandPanel_Interface#GetFlag("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
 		CommandPanel_SetBuffer( writer#split(output,"\r") )

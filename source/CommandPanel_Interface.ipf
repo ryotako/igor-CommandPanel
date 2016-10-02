@@ -29,7 +29,11 @@ End
 
 Function CommandPanel_SetLine(str)
 	String str
- 	SetVariable CPLine,win=$GetWinName(),value= _STR:str
+	String win=GetWinName()
+	if(strlen(win))
+	 	SetVariable CPLine,win=$win,value= _STR:str
+		SetFlag("LineChanged",1)
+	endif
 End
 
 Function/WAVE CommandPanel_GetBuffer()
@@ -40,11 +44,14 @@ End
 
 Function CommandPanel_SetBuffer(w)
 	WAVE/T w
-	Duplicate/FREE/T w buf
-	buf = ReplaceString("\\",w,"\\\\")
-	SetTextWave("buffer",buf)
-	ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
-	SetBufferChangedFlag(1)
+	String win=GetWinName()
+	if(strlen(win))
+		Duplicate/FREE/T w buf
+		buf = ReplaceString("\\",w,"\\\\")
+		SetTextWave("buffer",buf)
+		ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+		SetFlag("BufferChanged",1)
+	endif
 End
 
 Function CommandPanel_SelectedRow()
@@ -161,14 +168,15 @@ static Function SetTextWave(name,w)
 	endif
 End
 
-static Function SetBufferChangedFlag(n)
-	Variable n
+static Function SetFlag(name,value)
+	String name; Variable value
 	NewDataFolder/O root:Packages
 	NewDataFolder/O root:Packages:CommandPanel
-	Variable/G root:Packages:CommandPanel:V_BufferChangedFlag=n
+	Variable/G $"root:Packages:CommandPanel:flag_"+name = value
 End
-static Function GetBufferChangedFlag()
-	NVAR v=root:Packages:CommandPanel:V_BufferChangedFlag
+static Function GetFlag(name)
+	String name
+	NVAR v=$"root:Packages:CommandPanel:flag_"+name
 	return NVAR_Exists(v) && v!=0
 End
 

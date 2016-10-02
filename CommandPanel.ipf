@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Sun,02 Oct 2016
+// Mon,03 Oct 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -101,7 +101,11 @@ End
 
 override Function CommandPanel_SetLine(str)
 	String str
- 	SetVariable CPLine,win=$GetWinName(),value= _STR:str
+	String win=GetWinName()
+	if(strlen(win))
+	 	SetVariable CPLine,win=$win,value= _STR:str
+		SetFlag("LineChanged",1)
+	endif
 End
 
 override Function/WAVE CommandPanel_GetBuffer()
@@ -112,11 +116,14 @@ End
 
 override Function CommandPanel_SetBuffer(w)
 	WAVE/T w
-	Duplicate/FREE/T w buf
-	buf = ReplaceString("\\",w,"\\\\")
-	SetTextWave("buffer",buf)
-	ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
-	SetBufferChangedFlag(1)
+	String win=GetWinName()
+	if(strlen(win))
+		Duplicate/FREE/T w buf
+		buf = ReplaceString("\\",w,"\\\\")
+		SetTextWave("buffer",buf)
+		ListBox CPBuffer, win=$GetWinName(), row=0, selrow=0
+		SetFlag("BufferChanged",1)
+	endif
 End
 
 override Function CommandPanel_SelectedRow()
@@ -233,14 +240,15 @@ static Function SetTextWave(name,w)
 	endif
 End
 
-static Function SetBufferChangedFlag(n)
-	Variable n
+static Function SetFlag(name,value)
+	String name; Variable value
 	NewDataFolder/O root:Packages
 	NewDataFolder/O root:Packages:CommandPanel
-	Variable/G root:Packages:CommandPanel:V_BufferChangedFlag=n
+	Variable/G $"root:Packages:CommandPanel:flag_"+name = value
 End
-static Function GetBufferChangedFlag()
-	NVAR v=root:Packages:CommandPanel:V_BufferChangedFlag
+static Function GetFlag(name)
+	String name
+	NVAR v=$"root:Packages:CommandPanel:flag_"+name
 	return NVAR_Exists(v) && v!=0
 End
 
@@ -1190,16 +1198,21 @@ override strconstant CommandPanel_HistIgnore = ";"
 
 override Function CommandPanel_Execute(s)
 	String s
-	Variable error; String out
-	ExpandAndExecute(s,out,error)
-	return error
+	if(strlen(s))
+		Variable error; String out
+		ExpandAndExecute(s,out,error)
+		return error
+	else
+		return 0
+	endif
 End
 
 static Function ExecuteWithLog()
 	// initialize
 	InitAlias()
-	CommandPanel#SetBufferChangedFlag(0)
-	
+	CommandPanel#SetFlag("LineChanged",0)
+	CommandPanel#SetFlag("BufferChanged",0)
+
 	// get command
 	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
@@ -1221,11 +1234,13 @@ static Function ExecuteWithLog()
 	// history
 	if(!error)
 		AddHistory(input)
-		CommandPanel_SetLine("")
+		if( ! CommandPanel#GetFlag("LineChanged") )
+			CommandPanel_SetLine("")
+		endif
 	endif
 	
 	// output
-	if( CommandPanel#GetBufferChangedFlag() )
+	if( CommandPanel#GetFlag("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
 		CommandPanel_SetBuffer( CommandPanel#split(output,"\r") )
