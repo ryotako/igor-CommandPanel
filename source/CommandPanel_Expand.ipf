@@ -92,11 +92,11 @@ End
 
 static Function/S UnescapeBackquotes(input)
 	String input
-	return writer#gsub(input,"//.*$|\\\\\\\\|\\\\`","",proc=UnescapeBackquote)
+	return writer#gsub(input,"//.*$|\\\\\\\\|\\\\`|`","",proc=UnescapeBackquote)
 End
 static Function/S UnescapeBackquote(s)
 	String s
-	return SelectString(GrepString(s,"^\\\\[^\\\\]$"),s,s[1])
+	return SelectString(StringMatch(s,"`"),s,"")
 End
 
 

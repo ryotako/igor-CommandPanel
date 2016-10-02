@@ -508,11 +508,11 @@ End
 
 static Function/S UnescapeBackquotes(input)
 	String input
-	return CommandPanel#gsub(input,"//.*$|\\\\\\\\|\\\\`","",proc=UnescapeBackquote)
+	return CommandPanel#gsub(input,"//.*$|\\\\\\\\|\\\\`|`","",proc=UnescapeBackquote)
 End
 static Function/S UnescapeBackquote(s)
 	String s
-	return SelectString(GrepString(s,"^\\\\[^\\\\]$"),s,s[1])
+	return SelectString(StringMatch(s,"`"),s,"")
 End
 
 
