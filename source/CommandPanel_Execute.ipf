@@ -9,8 +9,14 @@ constant CommandPanel_HistIgnoreDups = 0
 constant CommandPanel_HistIgnoreSpace = 0
 strconstant CommandPanel_HistIgnore = ";"
 
+Function CommandPanel_Execute(s)
+	String s
+	Variable error; String out
+	ExpandAndExecute(s,out,error)
+	return error
+End
 
-static Function Exec()
+static Function ExecuteWithLog()
 	// initialize
 	InitAlias()
 	CommandPanel_Interface#SetBufferChangedFlag(0)
@@ -29,24 +35,12 @@ static Function Exec()
 	endif
 
 	// execute command
-	Variable ref,i,N=DimSize(cmds,0)
-	String output="",error=""
-	for(i=0;i<N;i+=1)
-		PrintCommand(cmds[i])
-		
-		ref = CaptureHistoryStart()
-		Execute/Z cmds[i]
-		error = GetErrMessage(V_Flag)
-		print error
-		output += CaptureHistory(ref,ref)
-		
-		if(strlen(error)) // when an error occurs, stop execution 
-			break
-		endif
-	endfor
+	Variable error
+	String output=""
+	ExpandAndExecute(input,output,error)
 	
 	// history
-	if(!strlen(error))
+	if(!error)
 		AddHistory(input)
 		CommandPanel_SetLine("")
 	endif
@@ -59,6 +53,29 @@ static Function Exec()
 	else		
 		ShowHistory()
 	endif
+End
+
+// expand input and execute
+// return output and error code with string and variable references
+static Function ExpandAndExecute(input,output,error)
+	String input,&output; Variable &error
+	WAVE/T cmds =CommandPanel_Expand#Expand(input)
+	if(DimSize(commands,0)==0)
+		Make/FREE/T cmds = {input}
+	endif
+	Variable i,N=DimSize(cmds,0)
+	for(i=0;i<N;i+=1)
+		PrintCommand(cmds[i])
+		Variable ref = CaptureHistoryStart()
+		Execute/Z cmds[i]
+		error = V_Flag
+		print GetErrMessage(error)
+		output += CaptureHistory(ref,ref)
+		if(error) // when an error occurs, stop execution 
+			print GetErrMessage(error)
+			break
+		endif
+	endfor
 End
 
 // Util
