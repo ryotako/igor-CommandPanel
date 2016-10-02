@@ -81,7 +81,7 @@ override strconstant CommandPanel_Font       = "Arial"
 override constant    CommandPanel_Fontsize   = 12
 override constant    CommandPanel_WinHeight  = 300
 override constant    CommandPanel_WinWidth   = 300
-override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(0)"
+override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
 
 override constant    CommandPanel_KeySwap    = 0
 
