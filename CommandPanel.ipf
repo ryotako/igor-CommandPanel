@@ -186,7 +186,7 @@ static Function LineAction(line)
 		endif
 		switch(key)
 		case 0: // Enter
-			CommandPanel#Exec()
+			CommandPanel#ExecuteWithLog()
 			break
 		case 2: // Shift + Enter
 			CommandPanel#Complete()
