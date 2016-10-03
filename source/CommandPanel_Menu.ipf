@@ -1,10 +1,11 @@
 #pragma ModuleName=CommandPanel_Menu
+#include ":CommandPanel_Interface"
 
 strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
-	"New Command Panel",/Q,Execute/Z "CommandPanel_New()"
+	"New Command Panel",/Q,CommandPanel_Interface#CommandPanel_New()
 	CommandPanel_Menu#MenuItem(0),  /Q, CommandPanel_Menu#MenuCommand(0)
 	CommandPanel_Menu#MenuItem(1),  /Q, CommandPanel_Menu#MenuCommand(1)
 	CommandPanel_Menu#MenuItem(2),  /Q, CommandPanel_Menu#MenuCommand(2)

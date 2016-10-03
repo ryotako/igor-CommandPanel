@@ -16,10 +16,11 @@ constant    CommandPanel_KeySwap    = 0
 // Public Functions
 
 Function CommandPanel_New()
+	WAVE/T w=CommandPanel_GetBuffer()
 	MakePanel()
 	MakeControls()
 	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
+	CommandPanel_SetBuffer(w)
 End
 
 Function/S CommandPanel_GetLine()

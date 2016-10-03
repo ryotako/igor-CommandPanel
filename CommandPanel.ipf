@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Mon,03 Oct 2016
+// Tue,04 Oct 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -23,12 +23,13 @@
 #if !ItemsInList(WinList("CommandPanel_Menu.ipf",";",""))
 
 //#pragma ModuleName=CommandPanel_Menu
+//#include ":CommandPanel_Interface"
 
 override strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
-	"New Command Panel",/Q,Execute/Z "CommandPanel_New()"
+	"New Command Panel",/Q,CommandPanel#CommandPanel_New()
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
 	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
 	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuCommand(2)
@@ -88,10 +89,11 @@ override constant    CommandPanel_KeySwap    = 0
 // Public Functions
 
 override Function CommandPanel_New()
+	WAVE/T w=CommandPanel_GetBuffer()
 	MakePanel()
 	MakeControls()
 	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
+	CommandPanel_SetBuffer(w)
 End
 
 override Function/S CommandPanel_GetLine()
