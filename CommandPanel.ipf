@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Tue,04 Oct 2016
+// Wed,05 Oct 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -321,8 +321,6 @@ static Function Complete()
 		ScrollBuffer(0)
 	elseif(GrepString(input,"^ ")) // beginning with whitespace
 		FilterBuffer()
-	elseif(GrepString(input,";$")) // ending with ;
-		JointSelectedRow()
 	elseif(GrepString(input,"^(\\\\\\\\|\\\\\\\"|[^\"])*(\"(?1)*\"(?1)*)*\"(?1)*$")) // string literal
 		// do nothing
 	elseif(GrepString(input,"((?<!\\w)root)?:(([a-zA-Z_]\\w*|\'[^;:\"\']+\'):)*([a-zA-Z_]\\w*|\'[^;:\"\']*)?$")) // pathname
