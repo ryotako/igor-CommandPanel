@@ -220,7 +220,8 @@ End
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		CommandPanel_SetLine(buffer.listWave[buffer.row])
+		String line=CommandPanel_GetLine()
+		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
 	endif
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
 		MakeControls()
