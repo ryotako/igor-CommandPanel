@@ -30,12 +30,12 @@ End
 
 static Function/S MenuItem(i)
 	Variable i
-	String win=StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	String win=StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 	GetWindow/Z $win,wtitle
 	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
 End
 static Function MenuCommand(i)
 	Variable i
-	DoWindow/F $StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 End
 
