@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,05 Oct 2016
+// Mon,10 Oct 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -54,13 +54,13 @@ End
 
 static Function/S MenuItem(i)
 	Variable i
-	String win=StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	String win=StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 	GetWindow/Z $win,wtitle
 	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
 End
 static Function MenuCommand(i)
 	Variable i
-	DoWindow/F $StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 End
 
 
@@ -811,7 +811,7 @@ End
 
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,28 Sep 2016
+// Mon,10 Oct 2016
 //------------------------------------------------------------------------------
 //#pragma ModuleName=writer
 
@@ -993,12 +993,12 @@ static Function/WAVE SubPatterns(s,expr)
 	DFREF here=GetDataFolderDFR(); SetDataFolder NewFreeDataFolder()
 	String s_   =ReplaceString("\"",ReplaceString("\\",s   ,"\\\\"),"\\\"")
 	String expr_=ReplaceString("\"",ReplaceString("\\",expr,"\\\\"),"\\\"")
-	String cmd; sprintf cmd,"SplitString/E=\"%s\" \"%s\"", expr_, s_
+	String cmd="SplitString/E=\""+expr_+ "\" \""+s_+"\""
 	SplitString/E=expr s
 	Make/FREE/T/N=(V_Flag) w; Variable i, N=V_Flag
 	for(i=0;i<N;i+=1)
 		Execute/Z "String/G s"+Num2Str(i)
-		sprintf cmd,"%s,s%d",cmd,i
+		cmd+=",s"+Num2Str(i)
 	endfor
 	Execute/Z cmd
 	for(i=0;i<N;i+=1)
