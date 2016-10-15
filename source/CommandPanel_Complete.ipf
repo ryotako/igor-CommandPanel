@@ -7,9 +7,9 @@ constant CommandPanel_IgnoreCase = 1
 
 static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
-	WAVE/T buf=CommandPanel_GetBuffer()
-	if(DimSize(buf,0)>0)
-		selrow=buf[CommandPanel_SelectedRow()]
+	WAVE/T line=CommandPanel_Interface#GetTextWave("line")
+	if(DimSize(line,0)>0)
+		selrow=line[CommandPanel_SelectedRow()]
 	endif
 	if(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
 		ScrollBuffer(1)
