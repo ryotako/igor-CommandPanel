@@ -4,7 +4,6 @@
 
 constant CommandPanel_IgnoreCase = 1
 
-
 static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
 	WAVE/T line=CommandPanel_Interface#GetTextWave("line")

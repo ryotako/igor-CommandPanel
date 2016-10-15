@@ -48,16 +48,29 @@ Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-Function CommandPanel_SetBuffer(w [line,buffer])
-	WAVE/T w,line,buffer
+Function CommandPanel_SetBuffer(w [word,line,buffer])
+	WAVE/T w,word,line,buffer
+	SetTextWave("word",w)
+	SetTextWave("line",w)
+	SetTextWave("buffer",writer#map(BufferEscape,w))
+	if(!ParamIsDefault(word))
+		SetTextWave("word",word)	
+	endif
+	if(!ParamIsDefault(line))
+		SetTextWave("line",line)	
+	endif
+	if(!ParamIsDefault(buffer))
+		SetTextWave("buffer",writer#map(BufferEscape,buffer))
+	endif
 	String win=GetWinName()
 	if(strlen(win))
-		Duplicate/FREE/T w buf
-		buf = ReplaceString("\\",w,"\\\\")
-		SetTextWave("buffer",buf)
 		ListBox CPBuffer, win=$win, row=0, selrow=0
 		SetFlag("BufferChanged",1)
 	endif
+End
+static Function/S BufferEscape(s)
+	String s
+	return ReplaceString("\\",s,"\\\\")
 End
 
 Function CommandPanel_SelectedRow()
