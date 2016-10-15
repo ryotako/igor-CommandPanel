@@ -37,18 +37,19 @@ End
 // for the same string as the selected buffer row
 static Function ScrollBuffer(n)
 	Variable n
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable size=DimSize(buf,0)
+	WAVE/T line=CommandPanel_Interface#GetTextWave("line")
+	Variable size=DimSize(line,0)
 	if(size)
 		Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
 		CommandPanel_SelectRow(num)
-		CommandPanel_SetLine(buf[num])
+		CommandPanel_SetLine(line[num])
 	endif
 End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	Duplicate/FREE/T CommandPanel_GetBuffer() buf
+	WAVE/T word=CommandPanel_Interface#GetTextWave("word")
+	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("buffer") buf
 	if(DimSize(buf,0)>0)
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
 		Variable i,N=ItemsInList(patterns," ")
@@ -57,7 +58,7 @@ static Function FilterBuffer()
 			if(CommandPanel_IgnoreCase)
 				pattern="(?i)"+pattern
 			endif
-			Extract/FREE/T buf,buf,GrepString(buf,pattern)
+			Extract/FREE/T buf,buf,GrepString(word,pattern)
 		endfor
 		CommandPanel_SetBuffer(buf)
 		if(DimSize(buf,0)>0)

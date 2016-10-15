@@ -48,8 +48,8 @@ Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-Function CommandPanel_SetBuffer(w)
-	WAVE/T w
+Function CommandPanel_SetBuffer(w [line,buffer])
+	WAVE/T w,line,buffer
 	String win=GetWinName()
 	if(strlen(win))
 		Duplicate/FREE/T w buf
