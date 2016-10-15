@@ -66,17 +66,6 @@ static Function FilterBuffer()
 	endif
 End
 
-// for a string ending with ;
-static Function JointSelectedRow()
-	String line=CommandPanel_GetLine()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	if(DimSize(buf,0))
-		CommandPanel_SetLine(line+buf[num+1])
-		CommandPanel_SelectRow(num+1)
-	endif
-End
-
 // for a pathname
 static Function CompletePathname()
 	String line=CommandPanel_GetLine(),cmd,path,name,s
