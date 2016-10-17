@@ -50,9 +50,11 @@ End
 
 Function CommandPanel_SetBuffer(w [word,line,buffer])
 	WAVE/T w,word,line,buffer
-	SetTextWave("word",w)
-	SetTextWave("line",w)
-	SetTextWave("buffer",writer#map(BufferEscape,w))
+	if(WaveExists(w))
+		SetTextWave("word",w)
+		SetTextWave("line",w)
+		SetTextWave("buffer",writer#map(BufferEscape,w))
+	endif
 	if(!ParamIsDefault(word))
 		SetTextWave("word",word)	
 	endif
