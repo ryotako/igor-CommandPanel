@@ -63,7 +63,7 @@ Function CommandPanel_SetBuffer(w [word,line,buffer])
 		SetTextWave("line",line)	
 	endif
 	if(!ParamIsDefault(buffer))
-		buffer = ReplaceString("\\",w,"\\\\")
+		buffer = ReplaceString("\\",buffer,"\\\\")
 		SetTextWave("buffer",buffer)
 	endif
 	String win=GetWinName()
