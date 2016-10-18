@@ -51,9 +51,10 @@ End
 Function CommandPanel_SetBuffer(w [word,line,buffer])
 	WAVE/T w,word,line,buffer
 	if(WaveExists(w))
-		SetTextWave("word",w)
+		w = BufferEscape(w)
+		SetTextWave("buffer",w)
 		SetTextWave("line",w)
-		SetTextWave("buffer",writer#map(BufferEscape,w))
+		SetTextWave("word",w)
 	endif
 	if(!ParamIsDefault(word))
 		SetTextWave("word",word)	
@@ -62,7 +63,8 @@ Function CommandPanel_SetBuffer(w [word,line,buffer])
 		SetTextWave("line",line)	
 	endif
 	if(!ParamIsDefault(buffer))
-		SetTextWave("buffer",writer#map(BufferEscape,buffer))
+		buffer = BufferEscape(buffer)
+		SetTextWave("buffer",buffer)
 	endif
 	String win=GetWinName()
 	if(strlen(win))

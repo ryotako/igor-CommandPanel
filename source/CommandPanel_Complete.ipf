@@ -48,6 +48,7 @@ End
 // for a string beginning with whitespace 
 static Function FilterBuffer()
 	WAVE/T word=CommandPanel_Interface#GetTextWave("word")
+	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("line") line
 	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("buffer") buf
 	if(DimSize(buf,0)>0)
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
@@ -58,10 +59,12 @@ static Function FilterBuffer()
 				pattern="(?i)"+pattern
 			endif
 			Extract/FREE/T buf,buf,GrepString(word,pattern)
+			Extract/FREE/T line,line,GrepString(word,pattern)
+			Extract/FREE/T word,word,GrepString(word,pattern)
 		endfor
-		CommandPanel_SetBuffer(buf)
+		CommandPanel_SetBuffer($"",buffer=buf,line=line,word=word)
 		if(DimSize(buf,0)>0)
-			CommandPanel_SetLine(buf[0])
+			CommandPanel_SetLine(line[0])
 		endif
 	endif
 End
