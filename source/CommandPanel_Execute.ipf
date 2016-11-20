@@ -78,7 +78,6 @@ static Function ExpandAndExecute(input,output,error)
 		Variable ref = CaptureHistoryStart()
 		Execute/Z cmds[i]
 		error = V_Flag
-		print GetErrMessage(error)
 		output += CaptureHistory(ref,ref)
 		if(error) // when an error occurs, stop execution 
 			print GetErrMessage(error)
