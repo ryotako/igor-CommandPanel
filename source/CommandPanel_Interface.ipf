@@ -162,7 +162,6 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	SetVariable CPLine,win=$GetWinName(),activate
 End
 
 static Function BufferAction(buffer)
