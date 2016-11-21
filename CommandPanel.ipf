@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Mon,03 Oct 2016
+// Mon,21 Nov 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -23,12 +23,13 @@
 #if !ItemsInList(WinList("CommandPanel_Menu.ipf",";",""))
 
 //#pragma ModuleName=CommandPanel_Menu
+//#include ":CommandPanel_Interface"
 
 override strconstant CommandPanel_Menu = "CommandPanel"
 
 Menu StringFromList(0,CommandPanel_Menu)
 	RemoveListItem(0,CommandPanel_Menu)
-	"New Command Panel",/Q,Execute/Z "CommandPanel_New()"
+	"New Command Panel",/Q,CommandPanel#CommandPanel_New()
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
 	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
 	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuCommand(2)
@@ -53,13 +54,13 @@ End
 
 static Function/S MenuItem(i)
 	Variable i
-	String win=StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	String win=StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 	GetWindow/Z $win,wtitle
 	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
 End
 static Function MenuCommand(i)
 	Variable i
-	DoWindow/F $StringFromList(i,WinList("CommandPanel_*",";","WIN:64"))
+	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 End
 
 
@@ -76,7 +77,10 @@ End
 //#include ":CommandPanel_Expand"
 //#include "Writer"
 
-// Options
+/////////////////////////////////////////////////////////////////////////////////
+// Options //////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 override strconstant CommandPanel_Font       = "Arial"
 override constant    CommandPanel_Fontsize   = 12
 override constant    CommandPanel_WinHeight  = 300
@@ -85,13 +89,16 @@ override strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFold
 
 override constant    CommandPanel_KeySwap    = 0
 
-// Public Functions
+/////////////////////////////////////////////////////////////////////////////////
+// Public Functions /////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 
 override Function CommandPanel_New()
+	WAVE/T w=CommandPanel_GetBuffer()
 	MakePanel()
 	MakeControls()
 	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
+	CommandPanel_SetBuffer(w)
 End
 
 override Function/S CommandPanel_GetLine()
@@ -114,13 +121,26 @@ override Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-override Function CommandPanel_SetBuffer(w)
-	WAVE/T w
+override Function CommandPanel_SetBuffer(w [word,line,buffer])
+	WAVE/T w,word,line,buffer
+	if(WaveExists(w))
+		w = ReplaceString("\\",w,"\\\\")
+		SetTextWave("buffer",w)
+		SetTextWave("line",w)
+		SetTextWave("word",w)
+	endif
+	if(!ParamIsDefault(word))
+		SetTextWave("word",word)	
+	endif
+	if(!ParamIsDefault(line))
+		SetTextWave("line",line)	
+	endif
+	if(!ParamIsDefault(buffer))
+		buffer = ReplaceString("\\",buffer,"\\\\")
+		SetTextWave("buffer",buffer)
+	endif
 	String win=GetWinName()
 	if(strlen(win))
-		Duplicate/FREE/T w buf
-		buf = ReplaceString("\\",w,"\\\\")
-		SetTextWave("buffer",buf)
 		ListBox CPBuffer, win=$win, row=0, selrow=0
 		SetFlag("BufferChanged",1)
 	endif
@@ -145,7 +165,10 @@ override Function CommandPanel_SelectRow(n)
 	endif
 End
 
-// Static Functions
+/////////////////////////////////////////////////////////////////////////////////
+// Static Functions /////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 // Window Name
 static Function/S SetWinName()
 	String wins=WinList("CommandPanel"+"*",";","WIN:64")
@@ -212,13 +235,16 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	SetVariable CPLine,win=$GetWinName(),activate
+	if(IgorVersion()<7)
+		SetVariable CPLine,win=$GetWinName(),activate
+	endif
 End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		CommandPanel_SetLine(buffer.listWave[buffer.row])
+		String line=CommandPanel_GetLine()
+		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
 	endif
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
 		MakeControls()
@@ -306,12 +332,11 @@ End
 
 override constant CommandPanel_IgnoreCase = 1
 
-
 static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
-	WAVE/T buf=CommandPanel_GetBuffer()
-	if(DimSize(buf,0)>0)
-		selrow=buf[CommandPanel_SelectedRow()]
+	WAVE/T line=CommandPanel#GetTextWave("line")
+	if(DimSize(line,0)>0)
+		selrow=line[CommandPanel_SelectedRow()]
 	endif
 	if(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
 		ScrollBuffer(1)
@@ -319,8 +344,6 @@ static Function Complete()
 		ScrollBuffer(0)
 	elseif(GrepString(input,"^ ")) // beginning with whitespace
 		FilterBuffer()
-	elseif(GrepString(input,";$")) // ending with ;
-		JointSelectedRow()
 	elseif(GrepString(input,"^(\\\\\\\\|\\\\\\\"|[^\"])*(\"(?1)*\"(?1)*)*\"(?1)*$")) // string literal
 		// do nothing
 	elseif(GrepString(input,"((?<!\\w)root)?:(([a-zA-Z_]\\w*|\'[^;:\"\']+\'):)*([a-zA-Z_]\\w*|\'[^;:\"\']*)?$")) // pathname
@@ -341,18 +364,20 @@ End
 // for the same string as the selected buffer row
 static Function ScrollBuffer(n)
 	Variable n
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable size=DimSize(buf,0)
+	WAVE/T line=CommandPanel#GetTextWave("line")
+	Variable size=DimSize(line,0)
 	if(size)
 		Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
 		CommandPanel_SelectRow(num)
-		CommandPanel_SetLine(buf[num])
+		CommandPanel_SetLine(line[num])
 	endif
 End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	Duplicate/FREE/T CommandPanel_GetBuffer() buf
+	WAVE/T word=CommandPanel#GetTextWave("word")
+	Duplicate/FREE/T CommandPanel#GetTextWave("line") line
+	Duplicate/FREE/T CommandPanel#GetTextWave("buffer") buf
 	if(DimSize(buf,0)>0)
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
 		Variable i,N=ItemsInList(patterns," ")
@@ -361,23 +386,14 @@ static Function FilterBuffer()
 			if(CommandPanel_IgnoreCase)
 				pattern="(?i)"+pattern
 			endif
-			Extract/FREE/T buf,buf,GrepString(buf,pattern)
+			Extract/FREE/T buf,buf,GrepString(word,pattern)
+			Extract/FREE/T line,line,GrepString(word,pattern)
+			Extract/FREE/T word,word,GrepString(word,pattern)
 		endfor
-		CommandPanel_SetBuffer(buf)
+		CommandPanel_SetBuffer($"",buffer=buf,line=line,word=word)
 		if(DimSize(buf,0)>0)
-			CommandPanel_SetLine(buf[0])
+			CommandPanel_SetLine(line[0])
 		endif
-	endif
-End
-
-// for a string ending with ;
-static Function JointSelectedRow()
-	String line=CommandPanel_GetLine()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	if(DimSize(buf,0))
-		CommandPanel_SetLine(line+buf[num+1])
-		CommandPanel_SelectRow(num+1)
 	endif
 End
 
@@ -810,7 +826,7 @@ End
 
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,28 Sep 2016
+// Mon,10 Oct 2016
 //------------------------------------------------------------------------------
 //#pragma ModuleName=writer
 
@@ -992,12 +1008,12 @@ static Function/WAVE SubPatterns(s,expr)
 	DFREF here=GetDataFolderDFR(); SetDataFolder NewFreeDataFolder()
 	String s_   =ReplaceString("\"",ReplaceString("\\",s   ,"\\\\"),"\\\"")
 	String expr_=ReplaceString("\"",ReplaceString("\\",expr,"\\\\"),"\\\"")
-	String cmd; sprintf cmd,"SplitString/E=\"%s\" \"%s\"", expr_, s_
+	String cmd="SplitString/E=\""+expr_+ "\" \""+s_+"\""
 	SplitString/E=expr s
 	Make/FREE/T/N=(V_Flag) w; Variable i, N=V_Flag
 	for(i=0;i<N;i+=1)
 		Execute/Z "String/G s"+Num2Str(i)
-		sprintf cmd,"%s,s%d",cmd,i
+		cmd+=",s"+Num2Str(i)
 	endfor
 	Execute/Z cmd
 	for(i=0;i<N;i+=1)
@@ -1274,7 +1290,6 @@ static Function ExpandAndExecute(input,output,error)
 		Variable ref = CaptureHistoryStart()
 		Execute/Z cmds[i]
 		error = V_Flag
-		print GetErrMessage(error)
 		output += CaptureHistory(ref,ref)
 		if(error) // when an error occurs, stop execution 
 			print GetErrMessage(error)

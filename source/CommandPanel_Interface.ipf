@@ -4,7 +4,10 @@
 #include ":CommandPanel_Expand"
 #include "Writer"
 
-// Options
+/////////////////////////////////////////////////////////////////////////////////
+// Options //////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 strconstant CommandPanel_Font       = "Arial"
 constant    CommandPanel_Fontsize   = 12
 constant    CommandPanel_WinHeight  = 300
@@ -13,13 +16,16 @@ strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
 
 constant    CommandPanel_KeySwap    = 0
 
-// Public Functions
+/////////////////////////////////////////////////////////////////////////////////
+// Public Functions /////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 
 Function CommandPanel_New()
+	WAVE/T w=CommandPanel_GetBuffer()
 	MakePanel()
 	MakeControls()
 	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer( CommandPanel_GetBuffer() )
+	CommandPanel_SetBuffer(w)
 End
 
 Function/S CommandPanel_GetLine()
@@ -42,13 +48,26 @@ Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-Function CommandPanel_SetBuffer(w)
-	WAVE/T w
+Function CommandPanel_SetBuffer(w [word,line,buffer])
+	WAVE/T w,word,line,buffer
+	if(WaveExists(w))
+		w = ReplaceString("\\",w,"\\\\")
+		SetTextWave("buffer",w)
+		SetTextWave("line",w)
+		SetTextWave("word",w)
+	endif
+	if(!ParamIsDefault(word))
+		SetTextWave("word",word)	
+	endif
+	if(!ParamIsDefault(line))
+		SetTextWave("line",line)	
+	endif
+	if(!ParamIsDefault(buffer))
+		buffer = ReplaceString("\\",buffer,"\\\\")
+		SetTextWave("buffer",buffer)
+	endif
 	String win=GetWinName()
 	if(strlen(win))
-		Duplicate/FREE/T w buf
-		buf = ReplaceString("\\",w,"\\\\")
-		SetTextWave("buffer",buf)
 		ListBox CPBuffer, win=$win, row=0, selrow=0
 		SetFlag("BufferChanged",1)
 	endif
@@ -73,7 +92,10 @@ Function CommandPanel_SelectRow(n)
 	endif
 End
 
-// Static Functions
+/////////////////////////////////////////////////////////////////////////////////
+// Static Functions /////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
 // Window Name
 static Function/S SetWinName()
 	String wins=WinList("CommandPanel"+"*",";","WIN:64")
@@ -140,13 +162,16 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	SetVariable CPLine,win=$GetWinName(),activate
+	if(IgorVersion()<7)
+		SetVariable CPLine,win=$GetWinName(),activate
+	endif
 End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		CommandPanel_SetLine(buffer.listWave[buffer.row])
+		String line=CommandPanel_GetLine()
+		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
 	endif
 	if(buffer.eventCode>0) //Redraw at any event except for closing. 
 		MakeControls()

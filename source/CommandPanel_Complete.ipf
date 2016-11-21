@@ -4,12 +4,11 @@
 
 constant CommandPanel_IgnoreCase = 1
 
-
 static Function Complete()
 	String input=CommandPanel_GetLine(), selrow=""
-	WAVE/T buf=CommandPanel_GetBuffer()
-	if(DimSize(buf,0)>0)
-		selrow=buf[CommandPanel_SelectedRow()]
+	WAVE/T line=CommandPanel_Interface#GetTextWave("line")
+	if(DimSize(line,0)>0)
+		selrow=line[CommandPanel_SelectedRow()]
 	endif
 	if(cmpstr(input,selrow,1)==0) // same as the selected buffer row 
 		ScrollBuffer(1)
@@ -17,8 +16,6 @@ static Function Complete()
 		ScrollBuffer(0)
 	elseif(GrepString(input,"^ ")) // beginning with whitespace
 		FilterBuffer()
-	elseif(GrepString(input,";$")) // ending with ;
-		JointSelectedRow()
 	elseif(GrepString(input,"^(\\\\\\\\|\\\\\\\"|[^\"])*(\"(?1)*\"(?1)*)*\"(?1)*$")) // string literal
 		// do nothing
 	elseif(GrepString(input,"((?<!\\w)root)?:(([a-zA-Z_]\\w*|\'[^;:\"\']+\'):)*([a-zA-Z_]\\w*|\'[^;:\"\']*)?$")) // pathname
@@ -39,18 +36,20 @@ End
 // for the same string as the selected buffer row
 static Function ScrollBuffer(n)
 	Variable n
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable size=DimSize(buf,0)
+	WAVE/T line=CommandPanel_Interface#GetTextWave("line")
+	Variable size=DimSize(line,0)
 	if(size)
 		Variable num=mod(CommandPanel_SelectedRow()+size+n,size)
 		CommandPanel_SelectRow(num)
-		CommandPanel_SetLine(buf[num])
+		CommandPanel_SetLine(line[num])
 	endif
 End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	Duplicate/FREE/T CommandPanel_GetBuffer() buf
+	WAVE/T word=CommandPanel_Interface#GetTextWave("word")
+	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("line") line
+	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("buffer") buf
 	if(DimSize(buf,0)>0)
 		String patterns=RemoveFromList("",CommandPanel_GetLine()," ")
 		Variable i,N=ItemsInList(patterns," ")
@@ -59,23 +58,14 @@ static Function FilterBuffer()
 			if(CommandPanel_IgnoreCase)
 				pattern="(?i)"+pattern
 			endif
-			Extract/FREE/T buf,buf,GrepString(buf,pattern)
+			Extract/FREE/T buf,buf,GrepString(word,pattern)
+			Extract/FREE/T line,line,GrepString(word,pattern)
+			Extract/FREE/T word,word,GrepString(word,pattern)
 		endfor
-		CommandPanel_SetBuffer(buf)
+		CommandPanel_SetBuffer($"",buffer=buf,line=line,word=word)
 		if(DimSize(buf,0)>0)
-			CommandPanel_SetLine(buf[0])
+			CommandPanel_SetLine(line[0])
 		endif
-	endif
-End
-
-// for a string ending with ;
-static Function JointSelectedRow()
-	String line=CommandPanel_GetLine()
-	WAVE/T buf=CommandPanel_GetBuffer()
-	Variable num=CommandPanel_SelectedRow()
-	if(DimSize(buf,0))
-		CommandPanel_SetLine(line+buf[num+1])
-		CommandPanel_SelectRow(num+1)
 	endif
 End
 
