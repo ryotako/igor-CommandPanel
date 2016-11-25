@@ -162,7 +162,9 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	SetVariable CPLine,win=$GetWinName(),activate
+	if(IgorVersion()<7)
+		SetVariable CPLine,win=$GetWinName(),activate
+	endif
 End
 
 static Function BufferAction(buffer)

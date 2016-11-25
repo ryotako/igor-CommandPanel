@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Tue,18 Oct 2016
+// Mon,21 Nov 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -235,7 +235,9 @@ static Function LineAction(line)
 			break
 		endswitch
 	endif
-	SetVariable CPLine,win=$GetWinName(),activate
+	if(IgorVersion()<7)
+		SetVariable CPLine,win=$GetWinName(),activate
+	endif
 End
 
 static Function BufferAction(buffer)
