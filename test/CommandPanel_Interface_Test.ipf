@@ -22,27 +22,22 @@ static Function kill_all_CommandPanel()
 	endfor
 End
 
-static Function/WAVE null()
-	Make/FREE/T/N=0 w; return w
-End
-
 Function TestCommandPanel_New()
 	setup()
 	
 	CommandPanel_New()
-		eq_str(WinList("CommandPanel0",";",""),"CommandPanel0;")	
-		eq_text(CommandPanel_GetBuffer(), $"")
-		eq_str(CommandPanel_GetLine(), "")
+	eq_str(WinList("CommandPanel0",";",""),"CommandPanel0;")	
+	eq_text(CommandPanel_GetBuffer(), $"")
+	eq_str(CommandPanel_GetLine(), "")
 	
 	CommandPanel_SetLine("test")
-		eq_str(CommandPanel_GetLine(), "test")
+	eq_str(CommandPanel_GetLine(), "test")
 	CommandPanel_SetLine("test2")
-		eq_str(CommandPanel_GetLine(), "test2")
+	eq_str(CommandPanel_GetLine(), "test2")
 
 
 	CommandPanel_SetBuffer({"test"})
-		eq_text(CommandPanel_GetBuffer(), {"test"})
-
+	eq_text(CommandPanel_GetBuffer(), {"test"})
 	
 	teardown()
 End
