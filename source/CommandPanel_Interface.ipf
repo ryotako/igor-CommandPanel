@@ -97,7 +97,7 @@ End
 /////////////////////////////////////////////////////////////////////////////////
 
 // Window Name
-static Function/S SetWinName()
+//static Function/S SetWinName()
 	String wins=WinList("CommandPanel"+"*",";","WIN:64")
 	Make/FREE/T/N=(ItemsInList(wins)+1) f="CommandPanel"+Num2Str(p)
 	Extract/FREE/T f,f,WhichListItem(f,wins)<0
@@ -110,24 +110,33 @@ End
 
 // Make a panel and controls
 static Function MakePanel()
-	Variable width  = CommandPanel_WinWidth
-	Variable height = CommandPanel_WinHeight
-	String   name   = UniqueName("CommandPanel",9,0)
-	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel_Interface#SetWinName()
+	NewPanel/K=1/W=(0,0,CommandPanel_WinWidth,CommandPanel_WinHeight)/N=CommandPanel
+	SetWindow $S_Name,hook(base)=CommandPanel_Interface#WinProc
 End
+
+static Function WinProc(s)
+	STRUCT WMWinHookStruct &s
+	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
+		GetWindow $s.winName, wsizeDC ;Variable width=V_Right-V_Left, height=V_Bottom-V_Top
+		ControlInfo/W=$s.winName CPLine ;Variable height_in=V_height, height_out=height-height_in
+		SetVariable CPLine, win=$s.winName, pos={0, 0},         size={width, height_in}
+		ListBox   CPBuffer, win=$s.winName, pos={0, height_in}, size={width, height_out}
+	endif
+	
+	if( s.eventCode == 11)
+		print s.keycode
+	endif
+End 
 
 static Function MakeControls()
 	String win=GetWinName()
 	// Title
-	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
+	DoWindow/T $win, WinTitle()
+
 	// Set Control Actions
  	SetVariable CPLine, win=$win, proc=CommandPanel_Interface#LineAction
 	ListBox   CPBuffer, win=$win, proc=CommandPanel_Interface#BufferAction
-	// Size
-	GetWindow $win, wsizeDC ;Variable width=V_Right-V_Left, height=V_Bottom-V_Top
-	ControlInfo/W=$win CPLine ;Variable height_in=V_height, height_out=height-height_in
-	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
-	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
+
 	// Font
 	String font
 	if(FindListItem(CommandPanel_Font,FontList(";")) >= 0)
@@ -148,26 +157,27 @@ End
 // Control Actions
 static Function LineAction(line)
 	STRUCT WMSetVariableAction &line
-	if(line.eventCode>0)
-		MakeControls()
-	endif
-		if(line.eventCode==2)
-	Variable key=line.eventMod
+	
+	if(line.eventCode == 2) // key input
+		Variable key = line.eventMod
+		
 		if(CommandPanel_KeySwap)
-			key= key==0 ? 2 : ( key == 2 ? 0 : key)
+			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
 		endif
+		
 		switch(key)
-		case 0: // Enter
-			CommandPanel_Execute#ExecuteWithLog()
-			break
-		case 2: // Shift + Enter
-			CommandPanel_Complete#Complete()
-			break
-		case 4: // Alt + Enter
-			CommandPanel_Complete#AltComplete()
-			break
+			case 0: // Enter
+				CommandPanel_Execute#ExecuteWithLog()
+				break
+			case 2: // Shift + Enter
+				CommandPanel_Complete#Complete()
+				break
+			case 4: // Alt + Enter
+				CommandPanel_Complete#AltComplete()
+				break
 		endswitch
 	endif
+	
 	if(IgorVersion()<7)
 		SetVariable CPLine,win=$GetWinName(),activate
 	endif
@@ -175,13 +185,14 @@ End
 
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
-	if(buffer.eventCode==3)//Send a selected string by double clicks. 
+	
+	if(buffer.eventCode == 3) // double click 
 		String line=CommandPanel_GetLine()
 		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
 	endif
-	if(buffer.eventCode>0) //Redraw at any event except for closing. 
-		MakeControls()
-		SetVariable CPLine,win=$GetWinName(),activate
+	
+	if(buffer.eventCode > 0) // except for closing 
+		SetVariable CPLine, activate
 	endif
 End
 
@@ -221,23 +232,15 @@ static Function GetFlag(name)
 End
 
 // WinTitle
-static Function/S WinTitle(s)
-	String s
-	String lhs,rhs=writer#gsub(s,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
-	SVAR S_Value
-	if(SVAR_Exists(S_Value))
-		String tmp=S_Value
-		Execute "S_Value="+rhs
-		lhs=S_Value
-		S_Value=tmp
-	else
-		String/G S_Value	
-		Execute "S_Value="+rhs
-		lhs=S_Value
-		KillStrings/Z S_Value
-	endif
-	return lhs
+static Function/S WinTitle()
+	NewDataFolder/O root:Packages
+	NewDataFolder/O root:Packages:CommandPanel
+	String expr = writer#gsub(CommandPanel_WinTitle,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
+	Execute "String/G root:Packages:CommandPanel:S_Title = " + expr
+	SVAR s = root:Packages:CommandPanel:S_Title
+	return s
 End
+
 static Function/S WinTitleSpecialChar(s)
 	String s
 	StrSwitch(s)
