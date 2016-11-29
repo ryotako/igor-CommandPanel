@@ -1,21 +1,25 @@
 #include "MinTest"
+#include "CommandPanel_Interface"
 
 static Function setup()
 	DuplicateDataFolder root:Packages:CommandPanel root:Packages:TestCommandPanel
 	KillDataFolder root:Packages:CommandPanel
-	
+	kill_all_CommandPanel()
+End
+
+static Function teardown()
+	KillDataFolder root:Packages:CommandPanel
+	DuplicateDataFolder root:Packages:TestCommandPanel root:Packages:CommandPanel
+	KillDataFolder root:Packages:TestCommandPanel
+	kill_all_CommandPanel()
+End
+
+static Function kill_all_CommandPanel()
 	String wins=WinList("CommandPanel*",";","WIN:64")
 	Variable i,N = ItemsInList(wins)
 	for(i=0;i<N;i+=1)
 		KillWindow $StringFromList(i,wins)
-		print StringFromList(i,wins)
 	endfor
-End
-
-static Function teardown()
-	KillDataFolder root:Packages:TestCommandPanel
-//	DuplicateDataFolder root:Packages:CommandPanel root:Packages:TestCommandPanel
-
 End
 
 static Function/WAVE null()
@@ -24,10 +28,21 @@ End
 
 Function TestCommandPanel_New()
 	setup()
-	CommandPanel_New()
-	eq_str(WinList("CommandPanel0",";",""),"CommandPanel0;")
 	
-	eq_text(root:Packages:buffer, null())
+	CommandPanel_New()
+		eq_str(WinList("CommandPanel0",";",""),"CommandPanel0;")	
+		eq_text(CommandPanel_GetBuffer(), $"")
+		eq_str(CommandPanel_GetLine(), "")
+	
+	CommandPanel_SetLine("test")
+		eq_str(CommandPanel_GetLine(), "test")
+	CommandPanel_SetLine("test2")
+		eq_str(CommandPanel_GetLine(), "test2")
+
+
+	CommandPanel_SetBuffer({"test"})
+		eq_text(CommandPanel_GetBuffer(), {"test"})
+
 	
 	teardown()
 End
