@@ -8,8 +8,8 @@
 // Options //////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-strconstant CommandPanel_Font       = "Arial"
-constant    CommandPanel_Fontsize   = 12
+strconstant CommandPanel_Font       = ""
+constant    CommandPanel_Fontsize   = 14
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300
 strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
@@ -129,14 +129,20 @@ static Function MakeControls()
 	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
 	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
 	// Font
-	if(FindListItem(CommandPanel_Font,FontList(";"))>0)
-		SetVariable CPLine, win=$win, font =$CommandPanel_Font
-		ListBox   CPBuffer, win=$win, font =$CommandPanel_Font
+	String font
+	if(FindListItem(CommandPanel_Font,FontList(";")) >= 0)
+		font = CommandPanel_Font
+	else
+		font = GetDefaultFont("")
 	endif
+	Execute "SetVariable CPLine, win="+win+", font =$\""+font+"\""
+	Execute "ListBox   CPBuffer, win="+win+", font =$\""+font+"\""
+	
 	SetVariable CPLine, win=$win, fSize= CommandPanel_FontSize
 	ListBox   CPBuffer, win=$win, fSize= CommandPanel_FontSize
+
 	// Other Settings
-	ListBox CPBuffer, win=$win, mode=2, listWave=root:Packages:CommandPanel:buffer
+	ListBox CPBuffer,   win=$win, mode=2, listWave=root:Packages:CommandPanel:buffer
 End
 
 // Control Actions
