@@ -187,8 +187,7 @@ static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	
 	if(buffer.eventCode == 3) // double click 
-		String line=CommandPanel_GetLine()
-		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
+		CommandPanel_SetLine(CommandPanel_GetLine() + buffer.listWave[buffer.row])
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
@@ -211,6 +210,7 @@ static Function/WAVE GetTextWave(name)
 	SetDataFolder here	
 	return w
 End
+
 static Function SetTextWave(name,w)
 	String name; WAVE/T w
 	WAVE/T f=GetTextWave(name)
@@ -219,16 +219,17 @@ static Function SetTextWave(name,w)
 	endif
 End
 
+static Function GetFlag(name)
+	String name
+	NVAR v=$"root:Packages:CommandPanel:V_"+name
+	return NVAR_Exists(v) && v!=0
+End
+
 static Function SetFlag(name,value)
 	String name; Variable value
 	NewDataFolder/O root:Packages
 	NewDataFolder/O root:Packages:CommandPanel
-	Variable/G $"root:Packages:CommandPanel:flag_"+name = value
-End
-static Function GetFlag(name)
-	String name
-	NVAR v=$"root:Packages:CommandPanel:flag_"+name
-	return NVAR_Exists(v) && v!=0
+	Variable/G $"root:Packages:CommandPanel:V_"+name = value
 End
 
 // WinTitle
