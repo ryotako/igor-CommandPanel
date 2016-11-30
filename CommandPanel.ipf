@@ -27,7 +27,7 @@
 
 override strconstant CommandPanel_Menu = "CommandPanel"
 
-Menu StringFromList(0,CommandPanel_Menu)
+Menu StringFromList(0,CommandPanel_Menu), dynamic
 	RemoveListItem(0,CommandPanel_Menu)
 	"New Command Panel",/Q,CommandPanel#CommandPanel_New()
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
