@@ -1,7 +1,8 @@
 #include "::CommandPanel"
 #include "MinTest"
+#pragma ModuleName=CommandPanelTest_Expand
 
-Function TestLineSplitting()
+static Function TestLineSplitting()
 	// Strong Line Split
 	eq_text(CommandPanel#StrongLineSplit(""), {""})
 	eq_text(CommandPanel#StrongLineSplit("a"), {"a"})
@@ -25,7 +26,7 @@ Function TestLineSplitting()
 	eq_text(CommandPanel#WeakLineSplit("a;\"b;c\""), {"a","\"b;c\""})
 End
 
-Function TestAliasExpansion()
+static Function TestAliasExpansion()
 	// Expand Alias
 	String path="root:Packages:CommandPanel:alias"
 	if(WaveExists($path))
@@ -56,7 +57,7 @@ static Function/WAVE Alias(expr)
 	return w
 End
 
-Function TestBraecExpansion()
+static Function TestBraecExpansion()
 	// Expand Brace
 	eq_text(CommandPanel#ExpandBrace(""), {""})
 	eq_text(CommandPanel#ExpandBrace("test"), {"test"})
@@ -93,7 +94,7 @@ Function TestBraecExpansion()
 	eq_text(CommandPanel#ExpandBrace("{4,{10..40..10},{50..300..50}} K"), {"4 K","10 K","20 K","30 K","40 K","50 K","100 K","150 K","200 K","250 K","300 K"})
 End
 
-Function TestParenthesisComplesion()
+static Function TestParenthesisComplesion()
 	// Complete Parenthesis
 	eq_text(CommandPanel#CompleteParen(""),{""})
 	eq_text(CommandPanel#CompleteParen(" TestFunc_IGNORE "),{" TestFunc_IGNORE() "})
