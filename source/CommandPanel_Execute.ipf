@@ -20,11 +20,12 @@ Function CommandPanel_Execute(s)
 	endif
 End
 
-static Function ExecuteWithLog()
+static Function ExecuteLine()
 	// initialize
 	InitAlias()
-	CommandPanel_Interface#SetFlag("LineChanged",0)
-	CommandPanel_Interface#SetFlag("BufferChanged",0)
+	
+	CommandPanel_Interface#SetVar("LineChanged",0)
+	CommandPanel_Interface#SetVar("BufferChanged",0)
 
 	// get command
 	String input=CommandPanel_GetLine()
@@ -47,13 +48,13 @@ static Function ExecuteWithLog()
 	// history
 	if(!error)
 		AddHistory(input)
-		if( ! CommandPanel_Interface#GetFlag("LineChanged") )
+		if( ! CommandPanel_Interface#GetVar("LineChanged") )
 			CommandPanel_SetLine("")
 		endif
 	endif
 	
 	// output
-	if( CommandPanel_Interface#GetFlag("BufferChanged") )
+	if( CommandPanel_Interface#GetVar("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
 		CommandPanel_SetBuffer( writer#split(output,"\r") )
@@ -61,7 +62,7 @@ static Function ExecuteWithLog()
 		ShowHistory()
 	endif
 	
-	DoWindow/F $CommandPanel_interface#GetWinName()
+//	DoWindow/F $CommandPanel_interface#GetWinName()
 End
 
 // expand input and execute
