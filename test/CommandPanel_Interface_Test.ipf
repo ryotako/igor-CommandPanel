@@ -6,7 +6,6 @@
 static Function setup()
 	KillDataFolder/Z root:Packages:TestCommandPanel
 	DuplicateDataFolder root:Packages:CommandPanel root:Packages:TestCommandPanel
-	KillDataFolder/Z root:Packages:CommandPanel
 	kill_all_CommandPanel()
 End
 

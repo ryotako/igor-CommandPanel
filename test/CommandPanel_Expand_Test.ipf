@@ -33,9 +33,10 @@ Function TestAliasExpansion()
 		Duplicate/T/FREE $path, backup
 		Make/O/T/N=0 $path
 	endif
-	Make/FREE/T/N=0 EMPTY
-
-	eq_text( Alias(""), EMPTY)
+	Make/FREE/T/N=0 empty
+	CommandPanel_Interface#SetTextWave("alias",empty)
+	
+	eq_text( Alias(""), $"")
 	eq_text( Alias("a = alias"), {"a=alias"})
 	eq_text( Alias("ts = test"), {"ts=test","a=alias"})
 
@@ -96,17 +97,17 @@ End
 Function TestParenthesisComplesion()
 	// Complete Parenthesis
 	eq_text(CommandPanel_Expand#CompleteParen(""),{""})
-	eq_text(CommandPanel_Expand#CompleteParen(" TestFunc_IGNORE "),{" TestFunc_IGNORE() "})
-	eq_text(CommandPanel_Expand#CompleteParen(" TestFunc_IGNORE () "),{" TestFunc_IGNORE () "})
-	eq_text(CommandPanel_Expand#CompleteParen("TestFunc_IGNORE a, b, c // comment"),{"TestFunc_IGNORE(a, b, c) // comment"})
-	eq_text(CommandPanel_Expand#CompleteParen("TestFunc_IGNORE //"),{"TestFunc_IGNORE() //"})
-	eq_text(CommandPanel_Expand#CompleteParen("TestFunc_IGNORE \" // \" "),{"TestFunc_IGNORE(\" // \") "})
-	eq_text(CommandPanel_Expand#CompleteParen(" TestStrFunc_IGNORE "),{" TestStrFunc_IGNORE(\"\") "})
-	eq_text(CommandPanel_Expand#CompleteParen("TestStrFunc_IGNORE test "),{"TestStrFunc_IGNORE(\"test\") "})
+	eq_text(CommandPanel_Expand#CompleteParen(" FunctionForTest "),{" FunctionForTest() "})
+	eq_text(CommandPanel_Expand#CompleteParen(" FunctionForTest () "),{" FunctionForTest () "})
+	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest a, b, c // comment"),{"FunctionForTest(a, b, c) // comment"})
+	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest //"),{"FunctionForTest() //"})
+	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest \" // \" "),{"FunctionForTest(\" // \") "})
+	eq_text(CommandPanel_Expand#CompleteParen(" StrFunctionForTest "),{" StrFunctionForTest(\"\") "})
+	eq_text(CommandPanel_Expand#CompleteParen("StrFunctionForTest test "),{"StrFunctionForTest(\"test\") "})
 End
 
-Function TestFunc_IGNORE()
+Function FunctionForTest()
 End
-Function TestStrFunc_IGNORE(s)
+Function StrFunctionForTest(s)
 	String s
 End
