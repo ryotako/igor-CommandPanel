@@ -1,16 +1,19 @@
 #include "MinTest"
 #include "CommandPanel_Interface"
 
+#pragma ModuleName=CmdPIT
+
 static Function setup()
+	KillDataFolder/Z root:Packages:TestCommandPanel
 	DuplicateDataFolder root:Packages:CommandPanel root:Packages:TestCommandPanel
-	KillDataFolder root:Packages:CommandPanel
+	KillDataFolder/Z root:Packages:CommandPanel
 	kill_all_CommandPanel()
 End
 
 static Function teardown()
-	KillDataFolder root:Packages:CommandPanel
+	KillDataFolder/Z root:Packages:CommandPanel
 	DuplicateDataFolder root:Packages:TestCommandPanel root:Packages:CommandPanel
-	KillDataFolder root:Packages:TestCommandPanel
+	KillDataFolder/Z root:Packages:TestCommandPanel
 	kill_all_CommandPanel()
 End
 
@@ -26,7 +29,7 @@ Function TestCommandPanel_New()
 	setup()
 	
 	CommandPanel_New()
-	eq_str(WinList("CommandPanel0",";",""),"CommandPanel0;")	
+	eq_str(WinList("CommandPanel*",";","WIN:64"),"CommandPanel;")	
 	eq_text(CommandPanel_GetBuffer(), $"")
 	eq_str(CommandPanel_GetLine(), "")
 	
@@ -39,5 +42,5 @@ Function TestCommandPanel_New()
 	CommandPanel_SetBuffer({"test"})
 	eq_text(CommandPanel_GetBuffer(), {"test"})
 	
-	teardown()
+	Execute/P/Q "cmdpit#teardown()"
 End
