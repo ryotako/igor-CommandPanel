@@ -1,4 +1,7 @@
+#pragma ModuleName=CmdPnlCompleteTest
+#include "MinTest"
 #include "CommandPanel_Complete"
+
 
 static Function setup()
 	NewDataFolder/O/S root:Packages:TestCommandPanel
@@ -17,6 +20,7 @@ static Function setup()
 	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub1
 	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub2
 	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub3
+	
 End
 
 static Function teardown()

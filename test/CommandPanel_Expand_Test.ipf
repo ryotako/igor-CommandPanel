@@ -2,7 +2,32 @@
 #include "MinTest"
 #pragma ModuleName=CommandPanelTest_Expand
 
-Function TestLineSplitting()
+static Function setup()
+	NewDataFolder/O/S root:Packages:TestCommandPanel
+
+	NewDataFolder/O root:Packages:TestCommandPanel:folder1
+	NewDataFolder/O root:Packages:TestCommandPanel:folder1:sub1
+	NewDataFolder/O root:Packages:TestCommandPanel:folder1:sub2
+	NewDataFolder/O root:Packages:TestCommandPanel:folder1:sub3
+
+	NewDataFolder/O root:Packages:TestCommandPanel:folder2
+	NewDataFolder/O root:Packages:TestCommandPanel:folder2:sub1
+	NewDataFolder/O root:Packages:TestCommandPanel:folder2:sub2
+	NewDataFolder/O root:Packages:TestCommandPanel:folder2:sub3
+
+	NewDataFolder/O root:Packages:TestCommandPanel:folder3
+	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub1
+	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub2
+	NewDataFolder/O root:Packages:TestCommandPanel:folder3:sub3
+	
+End
+
+static Function teardown()
+	KillDataFolder/Z root:Packages:TestCommandPanel
+End
+
+
+Function TestSplitLine()
 	// Strong Line Split
 	eq_text(CommandPanel_Expand#StrongLineSplit(""), {""})
 	eq_text(CommandPanel_Expand#StrongLineSplit("a"), {"a"})
@@ -26,7 +51,7 @@ Function TestLineSplitting()
 	eq_text(CommandPanel_Expand#WeakLineSplit("a;\"b;c\""), {"a","\"b;c\""})
 End
 
-Function TestAliasExpansion()
+Function TestExpandAlias()
 	// Expand Alias
 	String path="root:Packages:CommandPanel:alias"
 	if(WaveExists($path))
@@ -36,15 +61,15 @@ Function TestAliasExpansion()
 	Make/FREE/T/N=0 empty
 	CommandPanel_Interface#SetTextWave("alias",empty)
 	
-	eq_text( Alias(""), $"")
-	eq_text( Alias("a = alias"), {"a=alias"})
-	eq_text( Alias("ts = test"), {"ts=test","a=alias"})
+	eq_text(Alias(""), $"")
+	eq_text(Alias("a = alias"), {"a=alias"})
+	eq_text(Alias("ts = test"), {"ts=test","a=alias"})
 
-	eq_text( CommandPanel_Expand#ExpandAlias(""), {""})
-	eq_text( CommandPanel_Expand#ExpandAlias("a"), {"alias"})
-	eq_text( CommandPanel_Expand#ExpandAlias("ts"), {"test"})
-	eq_text( CommandPanel_Expand#ExpandAlias("a;a"), {"alias;alias"})
-	eq_text( CommandPanel_Expand#ExpandAlias("aa"), {"aa"})
+	eq_text(CommandPanel_Expand#ExpandAlias(""), {""})
+	eq_text(CommandPanel_Expand#ExpandAlias("a"), {"alias"})
+	eq_text(CommandPanel_Expand#ExpandAlias("ts"), {"test"})
+	eq_text(CommandPanel_Expand#ExpandAlias("a;a"), {"alias;alias"})
+	eq_text(CommandPanel_Expand#ExpandAlias("aa"), {"aa"})
 
 
 	if(WaveExists(backup))
@@ -57,7 +82,7 @@ static Function/WAVE Alias(expr)
 	return CommandPanel_Interface#GetTextWave("alias")
 End
 
-Function TestBraecExpansion()
+Function TestExpandBrace()
 	// Expand Brace
 	eq_text(CommandPanel_Expand#ExpandBrace(""), {""})
 	eq_text(CommandPanel_Expand#ExpandBrace("test"), {"test"})
@@ -94,7 +119,17 @@ Function TestBraecExpansion()
 	eq_text(CommandPanel_Expand#ExpandBrace("{4,{10..40..10},{50..300..50}} K"), {"4 K","10 K","20 K","30 K","40 K","50 K","100 K","150 K","200 K","250 K","300 K"})
 End
 
-Function TestParenthesisComplesion()
+Function TestExpandPath()
+	setup()
+
+	eq_text(CommandPanel_Expand#ExpandPath("cd :*"), {"cd :folder1", "cd :folder2", "cd :folder3"})
+	eq_text(CommandPanel_Expand#ExpandPath("cd :**:"), {"cd :folder1:","cd :folder1:sub1:","cd :folder1:sub2:","cd :folder1:sub3:","cd :folder2:","cd :folder2:sub1:","cd :folder2:sub2:","cd :folder2:sub3:","cd :folder3:","cd :folder3:sub1:","cd :folder3:sub2:","cd :folder3:sub3:"})
+	
+	teardown()
+End
+
+
+Function TestExpandCompleteParen()
 	// Complete Parenthesis
 	eq_text(CommandPanel_Expand#CompleteParen(""),{""})
 	eq_text(CommandPanel_Expand#CompleteParen(" FunctionForTest "),{" FunctionForTest() "})

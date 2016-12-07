@@ -214,7 +214,7 @@ static Function BufferAction(buffer)
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
-		SetVariable CPLine, activate
+		SetVariable CPLine, win=$buffer.win, activate
 	endif
 End
 

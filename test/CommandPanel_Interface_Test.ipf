@@ -5,12 +5,18 @@
 
 static Function setup()
 	KillDataFolder/Z root:Packages:TestCommandPanel
+	NewDataFolder/O root:Packages:CommandPanel
 	DuplicateDataFolder root:Packages:CommandPanel root:Packages:TestCommandPanel
 	kill_all_CommandPanel()
+	
+	Make/FREE/T/N=0 w
+	CommandPanel_SetLine("")
+	CommandPanel_SetBuffer(w)
 End
 
 static Function teardown()
 	KillDataFolder/Z root:Packages:CommandPanel
+	NewDataFolder/O root:Packages:TestCommandPanel
 	DuplicateDataFolder root:Packages:TestCommandPanel root:Packages:CommandPanel
 	KillDataFolder/Z root:Packages:TestCommandPanel
 	kill_all_CommandPanel()
