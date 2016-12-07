@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,30 Nov 2016
+// Wed,07 Dec 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -287,7 +287,7 @@ static Function BufferAction(buffer)
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
-		SetVariable CPLine, activate
+		SetVariable CPLine, win=$buffer.win, activate
 	endif
 End
 
@@ -890,7 +890,7 @@ End
 
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Mon,10 Oct 2016
+// Wed,07 Dec 2016
 //------------------------------------------------------------------------------
 //#pragma ModuleName=writer
 
@@ -1116,7 +1116,7 @@ override Function Writer_ProtoTypeLength(s)
 	return strlen(s)
 End
 
-// cast textwave into 1D textwave
+// cast a textwave into a 1D textwave
 static Function/WAVE cast(w)
 	WAVE/T w
 	if(WaveExists(w))
@@ -1196,10 +1196,9 @@ End
 
 static Function/WAVE map(f,w)
 	FUNCREF Writer_ProtoTypeId f; WAVE/T w
-	if(null(w))
-		return cast($"")
-	endif
-	return cons(f(head(w)),map(f,tail(w)))
+	WAVE/T buf=cast(w)
+	buf=f(w)
+	return buf
 End
 
 static Function/S foldl(f,s,w)
@@ -1228,10 +1227,12 @@ End
 
 static Function/WAVE concatMap(f,w)
 	FUNCREF Writer_ProtoTypeSplit f; WAVE/T w
-	if(null(w))
-		return cast($"")
-	endif
-	return extend(f(head(w)),concatMap(f,tail(w)))
+	Make/FREE/T/N=0 buf
+	Variable i,N = DimSize(w, 0)
+	for(i = 0; i < N; i += 1)
+			Concatenate/T {f(w[i])}, buf
+	endfor
+	return buf
 End
 
 static Function any(f,w)
