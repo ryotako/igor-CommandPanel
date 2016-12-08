@@ -5,6 +5,7 @@
 
 static Function/WAVE Expand(input)
 	String input
+
 	WAVE/T w1=writer#concatMap(StrongLineSplit,{input})
 	WAVE/T w2=writer#concatMap(ExpandAlias        ,w1 )
 	WAVE/T w3=writer#concatMap(ExpandBrace        ,w2 )
@@ -101,21 +102,22 @@ End
 
 
 // 1,5. Line Split
-static Function/WAVE LineSplitBy(delim,input)
-	String delim,input
-	Variable pos = strsearch(mask(input),delim,0)
+static Function/WAVE LineSplitBy(delim,input,masked)
+	String delim,input ,masked
+	Variable pos = strsearch(masked,delim,0)
 	if(pos<0)
 		return writer#cast({input})
 	endif
-	return writer#cons(input[0,pos-1],LineSplitBy(delim,input[pos+strlen(delim),inf]))
+	Variable pos2 = pos + strlen(delim)
+	return writer#cons(input[0,pos-1],LineSplitBy(delim,input[pos2,inf],masked[pos2,inf]))
 End
 static Function/WAVE StrongLineSplit(input)
 	String input
-	return LineSplitBy(";;",input)
+	return LineSplitBy(";;",input,mask(input))
 End
 static Function/WAVE WeakLineSplit(input)
 	String input
-	return LineSplitBy(";",input)
+	return LineSplitBy(";",input,mask(input))
 End
 
 
@@ -170,11 +172,7 @@ End
 // 3. Brace Expansion
 static Function/WAVE ExpandBrace(input)
 	String input
-	WAVE w1=writer#concatMap(ExpandNumberSeries,{input})
-	WAVE w2=writer#concatMap(ExpandCharacterSeries, w1 )
-	WAVE w3=writer#concatMap(ExpandSeries,          w2 )
-	WAVE w4=writer#concatMap(ExpandSeries,          w3 )
-	return w4
+	return ExpandSeries(ExpandCharacterSeries(ExpandNumberSeries(input)))
 End
 
 static Function/WAVE ExpandSeries(input)
@@ -183,15 +181,21 @@ static Function/WAVE ExpandSeries(input)
 	if(strlen(w[1])==0)
 		return writer#cast({input})
 	endif
-	WAVE/T ww=ExpandSeries_((w[1])[1,strlen(w[1])-2]); ww=w[0]+ww+w[2]
-	return writer#concatMap(ExpandSeries,ww)
+	WAVE/T body = ExpandSeries_((w[1])[1,strlen(w[1])-2])
+	body = w[0] + body + w[2]
+	return writer#concatMap(ExpandSeries,body)
 End
-static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
+
+static Function/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
 	if(strlen(body)==0)
 		return writer#cast({""})
 	elseif(StringMatch(body[0],","))
 		return writer#cons("",ExpandSeries_(body[1,inf]))
+	elseif(!GrepString(body,"{|}|\\\\"))
+		Variable size = ItemsInList(body, ",") + StringMatch(body[strlen(body)-1], ",")
+		Make/FREE/T/N=(size) w = StringFromList(p, body, ",")
+		return w
 	endif
 	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
 	if(strlen(w[2]))
@@ -201,11 +205,11 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	endif
 End
 
-static Function/WAVE ExpandNumberSeries(input)
+static Function/S ExpandNumberSeries(input)
 	String input
 	WAVE/T w=writer#partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
 	if(strlen(w[1])==0)
-		return writer#cast({input})
+		return input
 	endif
 	String fst,lst,stp; SplitString/E="{([+-]?\\d+)\.\.((?1))(\.\.((?1)))?}" w[1],fst,lst,stp,stp
 	Variable v1=Str2Num(fst), v2=Str2Num(lst), vd = abs(Str2Num(stp)); vd = NumType(vd) || vd==0 ? 1 : vd
@@ -214,14 +218,14 @@ static Function/WAVE ExpandNumberSeries(input)
 		s+=Num2Str(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return writer#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+writer#head(ExpandNumberSeries(w[2]))})
+	return SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+ExpandNumberSeries(w[2])
 End
 
-static Function/WAVE ExpandCharacterSeries(input)
+static Function/S ExpandCharacterSeries(input)
 	String input
 	WAVE/T w=writer#partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
 	if(strlen(w[1])==0)
-		return writer#cast({input})
+		return input
 	endif
 	String fst,lst,stp; SplitString/E="{([a-zA-Z])\.\.((?1))(\.\.([+-]?\\d+))?}" w[1],fst,lst,stp,stp
 	Variable v1=Char2Num(fst), v2=Char2Num(lst), vd = abs(Char2Num(stp)); vd = NumType(vd) || vd==0 ? 1 : vd
@@ -230,7 +234,7 @@ static Function/WAVE ExpandCharacterSeries(input)
 		s+=Num2Char(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return writer#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+writer#head(ExpandCharacterSeries(w[2]))})
+	return SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+ExpandCharacterSeries(w[2])
 End
 
 

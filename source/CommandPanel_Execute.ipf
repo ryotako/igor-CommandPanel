@@ -34,13 +34,7 @@ static Function ExecuteLine()
 		return NaN
 	endif
 
-	// expand command
-	WAVE/T cmds =CommandPanel_Expand#Expand(input)
-	if(DimSize(commands,0)==0)
-		Make/FREE/T cmds = {input}
-	endif
-
-	// execute command
+	// expand & execute command
 	Variable error
 	String output=""
 	ExpandAndExecute(input,output,error)
