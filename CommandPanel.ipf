@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,07 Dec 2016
+// Fri,09 Dec 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -529,27 +529,39 @@ End
 
 static Function/WAVE Expand(input)
 	String input
-	WAVE/T w1=CommandPanel#concatMap(StrongLineSplit,{input})
-	WAVE/T w2=CommandPanel#concatMap(ExpandAlias        ,w1 )
-	WAVE/T w3=CommandPanel#concatMap(ExpandBrace        ,w2 )
-	w3 = UnescapeBraces(w3)
-	WAVE/T w4=CommandPanel#concatMap(ExpandPath         ,w3 )
-	WAVE/T w5=CommandPanel#concatMap(WeakLineSplit      ,w4 )
-	WAVE/T w6=CommandPanel#concatMap(CompleteParen      ,w5 )
-	w6 = UnescapeBackquotes(w6)
 
-	return w6
+	// 1. strong line splitting
+	WAVE/T w1 = StrongLineSplit(input)
+
+	// 2. alias expansion
+	w1 = ExpandAlias(w1)
+
+	// 3. brace expansion
+	WAVE/T w2 = CommandPanel#concatMap(ExpandBrace, w1)
+	w2 = UnescapeBraces(w2)
+	
+	// 4. pathname expansion
+	WAVE/T w3 = CommandPanel#concatMap(ExpandPath, w2)
+	
+	// 5. weak line splitting
+	WAVE/T w4 = CommandPanel#concatMap(WeakLineSplit,w3)
+
+	// 6. parenthesis completion
+	w4 = UnescapeBackquotes(CompleteParen(w4))
+
+	return w4
 End
 
 
 // Utils
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
-	if(CommandPanel#null(w))
-		return CommandPanel#cast($"")
-	endif
-	Variable len=strlen(CommandPanel#head(w))
-	return CommandPanel#cons(s[0,len-1],SplitAs(s[len,inf],CommandPanel#tail(w)))
+	Variable i,j,N = DimSize(w,0)
+	Make/FREE/T/N=(N) buf
+	for(i = 0, j = 0; i < N; j += strlen(w[i]), i += 1)
+		buf[i] = s[j,j+strlen(w[i])-1]
+	endfor
+	return buf
 End
 static Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
@@ -561,18 +573,22 @@ static Function/S trim(s)
 End
 static Function/S join(w)
 	WAVE/T w
-	if(CommandPanel#null(w))
-		return ""
-	endif
-	return CommandPanel#head(w)+join(CommandPanel#tail(w))
+	String buf = ""
+	Variable i,N = DimSize(w,0)
+	for(i = 0; i < N; i += 1)
+		buf += w[i]
+	endfor
+	return buf
 End
 static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
-	if(CommandPanel#null(w1))
-		return CommandPanel#cast($"")
+	Variable n1 = DimSize(w1, 0), n2 = DimSize(w2, 0)
+	if(n1 * n2)
+		Make/FREE/T/N=(n1*n2) w = w1[floor(p / n2)] + w2[mod(p, n2)]
+	else
+		Make/FREE/T/N=0 w
 	endif
-	Make/FREE/T/N=(DimSize(w2,0)) f=CommandPanel#head(w1)+w2
-	return CommandPanel#extend(f,product(CommandPanel#tail(w1),w2))
+	return w
 End
 
 
@@ -581,17 +597,19 @@ End
 static strconstant M ="|" // one character for masking
 static Function/S Mask(input)
 	String input
+	
 	// mask comment
-	input=CommandPanel#gsub(input,"//.*$","",proc=MaskAll)
+	input=CommandPanel#gsub(input,"//.*$","",proc=Mask_)
 	// mask with ``
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc=MaskAll)
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc=Mask_)
 	// mask with ""
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc=MaskAll)
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc=Mask_)
 	// mask with \
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc=MaskAll)
+	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc=Mask_)
+
 	return input
 End
-static Function/S MaskAll(s)
+static Function/S Mask_(s)
 	String s
 	Variable i; String buf=""
 	for(i=0;i<strlen(s);i+=1)
@@ -603,11 +621,9 @@ End
 // unascape
 static Function/S UnescapeBraces(input)
 	String input
-	String ignore="//.*$|\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"|"
-	input=CommandPanel#gsub(input,ignore+"\\\\{","",proc=UnescapeBrace)
-	input=CommandPanel#gsub(input,ignore+"\\\\}","",proc=UnescapeBrace)
-	input=CommandPanel#gsub(input,ignore+"\\\\,","",proc=UnescapeBrace)
-	return input
+	String ignore = "//.*$|\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\""
+	String pattern = "\\\\{|\\\\}\\\\,"
+	return CommandPanel#gsub(input,ignore+"|"+pattern,"",proc=UnescapeBrace)
 End
 static Function/S UnescapeBrace(s)
 	String s
@@ -625,46 +641,47 @@ End
 
 
 // 1,5. Line Split
-static Function/WAVE LineSplitBy(delim,input)
-	String delim,input
-	Variable pos = strsearch(mask(input),delim,0)
+static Function/WAVE LineSplitBy(delim,input,masked)
+	String delim,input ,masked
+	Variable pos = strsearch(masked,delim,0)
 	if(pos<0)
 		return CommandPanel#cast({input})
 	endif
-	return CommandPanel#cons(input[0,pos-1],LineSplitBy(delim,input[pos+strlen(delim),inf]))
+	Variable pos2 = pos + strlen(delim)
+	return CommandPanel#cons(input[0,pos-1],LineSplitBy(delim,input[pos2,inf],masked[pos2,inf]))
 End
 static Function/WAVE StrongLineSplit(input)
 	String input
-	return LineSplitBy(";;",input)
+	return LineSplitBy(";;",input,mask(input))
 End
 static Function/WAVE WeakLineSplit(input)
 	String input
-	return LineSplitBy(";",input)
+	return LineSplitBy(";",input,mask(input))
 End
 
 
 // 2. Alias Expansion
-static Function/WAVE ExpandAlias(input)
+static Function/S ExpandAlias(input)
 	String input
 	WAVE/T w=PartitionWithMask(input,";")// line, ;, lines
 	if(strlen(w[1])==0)
 		return ExpandAlias_(input)
 	endif
-	return CommandPanel#cast({join(CommandPanel#extend(ExpandAlias_(w[0]+w[1]),ExpandAlias(w[2])))})
+	return ExpandAlias_(w[0]+w[1]) + ExpandAlias(w[2])
 End
-static Function/WAVE ExpandAlias_(input) // one line
+static Function/S ExpandAlias_(input) // one line
 	String input
 	WAVE/T w=CommandPanel#partition(input,"^\\s*(\\w*)") //space,alias,args
 	if(strlen(w[1])==0)
-		return CommandPanel#cast({input})
+		return input
 	endif
 	Duplicate/FREE/T GetAlias(),als
 	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
 	if(CommandPanel#null(als))
-		return CommandPanel#cast({input})
+		return input
 	else
 		String cmd=(CommandPanel#head(als))[strlen(w[1])+1,inf]
-		return CommandPanel#cast({w[0]+CommandPanel#head(ExpandAlias_(cmd))+w[2]})
+		return w[0]+ExpandAlias_(cmd)+w[2]
 	endif
 End
 
@@ -694,11 +711,7 @@ End
 // 3. Brace Expansion
 static Function/WAVE ExpandBrace(input)
 	String input
-	WAVE w1=CommandPanel#concatMap(ExpandNumberSeries,{input})
-	WAVE w2=CommandPanel#concatMap(ExpandCharacterSeries, w1 )
-	WAVE w3=CommandPanel#concatMap(ExpandSeries,          w2 )
-	WAVE w4=CommandPanel#concatMap(ExpandSeries,          w3 )
-	return w4
+	return ExpandSeries(ExpandCharacterSeries(ExpandNumberSeries(input)))
 End
 
 static Function/WAVE ExpandSeries(input)
@@ -707,15 +720,21 @@ static Function/WAVE ExpandSeries(input)
 	if(strlen(w[1])==0)
 		return CommandPanel#cast({input})
 	endif
-	WAVE/T ww=ExpandSeries_((w[1])[1,strlen(w[1])-2]); ww=w[0]+ww+w[2]
-	return CommandPanel#concatMap(ExpandSeries,ww)
+	WAVE/T body = ExpandSeries_((w[1])[1,strlen(w[1])-2])
+	body = w[0] + body + w[2]
+	return CommandPanel#concatMap(ExpandSeries,body)
 End
-static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
+
+static Function/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
 	if(strlen(body)==0)
 		return CommandPanel#cast({""})
 	elseif(StringMatch(body[0],","))
 		return CommandPanel#cons("",ExpandSeries_(body[1,inf]))
+	elseif(!GrepString(body,"{|}|\\\\"))
+		Variable size = ItemsInList(body, ",") + StringMatch(body[strlen(body)-1], ",")
+		Make/FREE/T/N=(size) w = StringFromList(p, body, ",")
+		return w
 	endif
 	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
 	if(strlen(w[2]))
@@ -725,11 +744,11 @@ static FUnction/WAVE ExpandSeries_(body) // expand inside of {} once
 	endif
 End
 
-static Function/WAVE ExpandNumberSeries(input)
+static Function/S ExpandNumberSeries(input)
 	String input
 	WAVE/T w=CommandPanel#partition(input,trim("( { ([+-]?\\d+) \.\. (?2) (\.\. (?2))? } )"))
 	if(strlen(w[1])==0)
-		return CommandPanel#cast({input})
+		return input
 	endif
 	String fst,lst,stp; SplitString/E="{([+-]?\\d+)\.\.((?1))(\.\.((?1)))?}" w[1],fst,lst,stp,stp
 	Variable v1=Str2Num(fst), v2=Str2Num(lst), vd = abs(Str2Num(stp)); vd = NumType(vd) || vd==0 ? 1 : vd
@@ -738,14 +757,14 @@ static Function/WAVE ExpandNumberSeries(input)
 		s+=Num2Str(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return CommandPanel#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+CommandPanel#head(ExpandNumberSeries(w[2]))})
+	return SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+ExpandNumberSeries(w[2])
 End
 
-static Function/WAVE ExpandCharacterSeries(input)
+static Function/S ExpandCharacterSeries(input)
 	String input
 	WAVE/T w=CommandPanel#partition(input,trim("( { ([a-zA-Z]) \.\. (?2) (\.\. ([+-]?\\d+))? } )"))
 	if(strlen(w[1])==0)
-		return CommandPanel#cast({input})
+		return input
 	endif
 	String fst,lst,stp; SplitString/E="{([a-zA-Z])\.\.((?1))(\.\.([+-]?\\d+))?}" w[1],fst,lst,stp,stp
 	Variable v1=Char2Num(fst), v2=Char2Num(lst), vd = abs(Char2Num(stp)); vd = NumType(vd) || vd==0 ? 1 : vd
@@ -754,7 +773,7 @@ static Function/WAVE ExpandCharacterSeries(input)
 		s+=Num2Char(v1+i*vd*sign(v2-v1))+","
 	endfor
 	s=RemoveEnding(s,",")
-	return CommandPanel#cast({SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+CommandPanel#head(ExpandCharacterSeries(w[2]))})
+	return SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+ExpandCharacterSeries(w[2])
 End
 
 
@@ -867,18 +886,18 @@ End
 
 
 // 6. Complete Parenthesis
-static Function/WAVE CompleteParen(input)
+static Function/S CompleteParen(input)
 	String input
-	String ref = CommandPanel#gsub(CommandPanel#gsub(input,"(\\\\\")","",proc=MaskAll),"(\"[^\"]*\")","",proc=MaskAll)
+	String ref = CommandPanel#gsub(CommandPanel#gsub(input,"(\\\\\")","",proc=Mask_),"(\"[^\"]*\")","",proc=Mask_)
 	WAVE/T w=SplitAs(input,CommandPanel#partition(ref,"\\s(//.*)?$")) // command, comment, ""
 	WAVE/T f=CommandPanel#partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
 	String info=FunctionInfo(trim(f[1]))
 	if(strlen(info)==0 || GrepString(f[2],"^\\("))
-		return CommandPanel#cast({input})
+		return input
 	elseif(NumberByKey("N_PARAMS",info)==1 && NumberByKey("PARAM_0_TYPE",info)==8192 && !GrepString(f[2],"^ *\".*\" *$"))
 		f[2]="\""+f[2]+"\""
 	endif
-	return CommandPanel#cast({CommandPanel#sub(f[1]," *$","")+"("+f[2]+")"+w[1]})
+	return CommandPanel#sub(f[1]," *$","")+"("+f[2]+")"+w[1]
 End
 
 #endif
@@ -890,7 +909,7 @@ End
 
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,07 Dec 2016
+// Fri,09 Dec 2016
 //------------------------------------------------------------------------------
 //#pragma ModuleName=writer
 
@@ -1230,7 +1249,7 @@ static Function/WAVE concatMap(f,w)
 	Make/FREE/T/N=0 buf
 	Variable i,N = DimSize(w, 0)
 	for(i = 0; i < N; i += 1)
-			Concatenate/T {f(w[i])}, buf
+			Concatenate/T/NP {f(w[i])}, buf
 	endfor
 	return buf
 End
@@ -1311,13 +1330,7 @@ static Function ExecuteLine()
 		return NaN
 	endif
 
-	// expand command
-	WAVE/T cmds =CommandPanel#Expand(input)
-	if(DimSize(commands,0)==0)
-		Make/FREE/T cmds = {input}
-	endif
-
-	// execute command
+	// expand & execute command
 	Variable error
 	String output=""
 	ExpandAndExecute(input,output,error)
