@@ -1340,7 +1340,7 @@ static Function ExecuteLine()
 	if( CommandPanel#GetVar("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
-		CommandPanel_SetBuffer( CommandPanel#split(output,"\r") )
+		CommandPanel_SetBuffer(CommandPanel#init(CommandPanel#split(output,"\r")))
 	else		
 		ShowHistory()
 	endif
