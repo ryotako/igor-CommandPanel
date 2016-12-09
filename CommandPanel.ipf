@@ -243,7 +243,6 @@ End
 // Window hook
 static Function WinProc(s)
 	STRUCT WMWinHookStruct &s
-	
 	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
 		ResizeControls(s.winName)
 	endif
@@ -253,6 +252,8 @@ End
 static Function LineAction(line)
 	STRUCT WMSetVariableAction &line
 	
+	DoWindow/T $line.win, WinTitle()
+
 	if(line.eventCode == 2) // key input
 		Variable key = line.eventMod
 		
@@ -287,6 +288,7 @@ static Function BufferAction(buffer)
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
+		DoWindow/T $buffer.win, WinTitle()
 		SetVariable CPLine, win=$buffer.win, activate
 	endif
 End
@@ -489,9 +491,9 @@ override Function CompleteOperationName()
 	
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
-	
+
 	Make/FREE/T/N=0 buf
-	Concatenate/T {CommandPanel#GetAliasNames(), oprs}, buf
+	Concatenate/T/NP {CommandPanel#GetAliasNames(), oprs}, buf
 	
 	Extract/T/FREE buf, buf, StringMatch(buf, word + "*")
 	buf = pre + buf
@@ -570,15 +572,6 @@ End
 static Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
-End
-static Function/S join(w)
-	WAVE/T w
-	String buf = ""
-	Variable i,N = DimSize(w,0)
-	for(i = 0; i < N; i += 1)
-		buf += w[i]
-	endfor
-	return buf
 End
 static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
@@ -1216,7 +1209,9 @@ End
 static Function/WAVE map(f,w)
 	FUNCREF Writer_ProtoTypeId f; WAVE/T w
 	WAVE/T buf=cast(w)
-	buf=f(w)
+	if(length(buf))
+		buf=f(w)
+	endif
 	return buf
 End
 
@@ -1347,7 +1342,7 @@ static Function ExecuteLine()
 	if( CommandPanel#GetVar("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
-		CommandPanel_SetBuffer( CommandPanel#split(output,"\r") )
+		CommandPanel_SetBuffer(CommandPanel#init(CommandPanel#split(output,"\r")))
 	else		
 		ShowHistory()
 	endif

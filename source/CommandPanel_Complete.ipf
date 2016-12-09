@@ -108,9 +108,9 @@ Function CompleteOperationName()
 	
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
-	
+
 	Make/FREE/T/N=0 buf
-	Concatenate/T {CommandPanel_Expand#GetAliasNames(), oprs}, buf
+	Concatenate/T/NP {CommandPanel_Expand#GetAliasNames(), oprs}, buf
 	
 	Extract/T/FREE buf, buf, StringMatch(buf, word + "*")
 	buf = pre + buf
