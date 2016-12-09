@@ -243,7 +243,6 @@ End
 // Window hook
 static Function WinProc(s)
 	STRUCT WMWinHookStruct &s
-	
 	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
 		ResizeControls(s.winName)
 	endif
@@ -253,6 +252,8 @@ End
 static Function LineAction(line)
 	STRUCT WMSetVariableAction &line
 	
+	DoWindow/T $line.win, WinTitle()
+
 	if(line.eventCode == 2) // key input
 		Variable key = line.eventMod
 		
@@ -287,6 +288,7 @@ static Function BufferAction(buffer)
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
+		DoWindow/T $buffer.win, WinTitle()
 		SetVariable CPLine, win=$buffer.win, activate
 	endif
 End
