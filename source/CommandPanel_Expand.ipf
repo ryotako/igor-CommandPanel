@@ -22,11 +22,12 @@ End
 // Utils
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
-	if(writer#null(w))
-		return writer#cast($"")
-	endif
-	Variable len=strlen(writer#head(w))
-	return writer#cons(s[0,len-1],SplitAs(s[len,inf],writer#tail(w)))
+	Variable i,j,N = DimSize(w,0)
+	Make/FREE/T/N=(N) buf
+	for(i = 0, j = 0; i < N; j += strlen(w[i]), i += 1)
+		buf[i] = s[j,j+strlen(w[i])-1]
+	endfor
+	return buf
 End
 static Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
