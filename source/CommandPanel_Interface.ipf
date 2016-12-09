@@ -8,8 +8,8 @@
 // Options //////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-strconstant CommandPanel_Font       = "Arial"
-constant    CommandPanel_Fontsize   = 12
+strconstant CommandPanel_Font       = ""
+constant    CommandPanel_Fontsize   = 14
 constant    CommandPanel_WinHeight  = 300
 constant    CommandPanel_WinWidth   = 300
 strconstant CommandPanel_WinTitle   = "'['+IgorInfo(1)+'] '+GetDataFolder(1)"
@@ -21,25 +21,18 @@ constant    CommandPanel_KeySwap    = 0
 /////////////////////////////////////////////////////////////////////////////////
 
 Function CommandPanel_New()
-	WAVE/T w=CommandPanel_GetBuffer()
 	MakePanel()
-	MakeControls()
-	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer(w)
 End
 
 Function/S CommandPanel_GetLine()
-	ControlInfo/W=$GetWinName() CPLine
-	return SelectString(strlen(S_Value)>0,"",S_Value)
+	return GetStr("CommandLine")
 End
 
 Function CommandPanel_SetLine(str)
 	String str
-	String win=GetWinName()
-	if(strlen(win))
-	 	SetVariable CPLine,win=$win,value= _STR:str
-		SetFlag("LineChanged",1)
-	endif
+
+	SetStr("CommandLine",str)
+	SetVar("LineChanged",1)
 End
 
 Function/WAVE CommandPanel_GetBuffer()
@@ -50,6 +43,7 @@ End
 
 Function CommandPanel_SetBuffer(w [word,line,buffer])
 	WAVE/T w,word,line,buffer
+
 	if(WaveExists(w))
 		w = ReplaceString("\\",w,"\\\\")
 		SetTextWave("buffer",w)
@@ -66,172 +60,83 @@ Function CommandPanel_SetBuffer(w [word,line,buffer])
 		buffer = ReplaceString("\\",buffer,"\\\\")
 		SetTextWave("buffer",buffer)
 	endif
-	String win=GetWinName()
-	if(strlen(win))
-		ListBox CPBuffer, win=$win, row=0, selrow=0
-		SetFlag("BufferChanged",1)
-	endif
+	CommandPanel_SelectRow(0)
+	SetVar("BufferChanged",1)
 End
 
 Function CommandPanel_SelectedRow()
 	Variable n
-	String win=GetWinName()
+
+	String win = StringFromList(0, WinList("CommandPanel*",";","WIN:64"))
 	if(strlen(win))
 		ControlInfo/W=$win CPBuffer
 		return V_Value
-	else
-		return NaN
 	endif
 End
 
 Function CommandPanel_SelectRow(n)
 	Variable n
-	String win=GetWinName()
+
+	String win = StringFromList(0, WinList("CommandPanel*",";","WIN:64"))
 	if(strlen(win))
 		ListBox CPBuffer, win=$win, row=n, selrow=n
 	endif
 End
 
 /////////////////////////////////////////////////////////////////////////////////
-// Static Functions /////////////////////////////////////////////////////////////
+// Panel Function ///////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-// Window Name
-static Function/S SetWinName()
-	String wins=WinList("CommandPanel"+"*",";","WIN:64")
-	Make/FREE/T/N=(ItemsInList(wins)+1) f="CommandPanel"+Num2Str(p)
-	Extract/FREE/T f,f,WhichListItem(f,wins)<0
-	return f[0]
-End
-
-static Function/S GetWinName()
-	return StringFromList(0,WinList("CommandPanel"+"*",";","WIN:64"))
-End
-
-// Make a panel and controls
 static Function MakePanel()
-	Variable width  = CommandPanel_WinWidth
+	Variable width = CommandPanel_WinWidth
 	Variable height = CommandPanel_WinHeight
-	String   name   = UniqueName("CommandPanel",9,0)
-	NewPanel/K=1/W=(0,0,width,height)/N=$CommandPanel_Interface#SetWinName()
-End
-
-static Function MakeControls()
-	String win=GetWinName()
+	NewPanel/K=1/W=(0, 0, width, height)/N = CommandPanel
+	String win = S_Name
+	
 	// Title
-	DoWindow/T $win, WinTitle(CommandPanel_WinTitle)
-	// Set Control Actions
- 	SetVariable CPLine, win=$win, proc=CommandPanel_Interface#LineAction
-	ListBox   CPBuffer, win=$win, proc=CommandPanel_Interface#BufferAction
-	// Size
-	GetWindow $win, wsizeDC ;Variable width=V_Right-V_Left, height=V_Bottom-V_Top
-	ControlInfo/W=$win CPLine ;Variable height_in=V_height, height_out=height-height_in
-	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
-	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
+	DoWindow/T $win, WinTitle()
+
+	// Window hook
+	SetWindow $win, hook(base) = CommandPanel_Interface#WinProc
+
+	// Controls & their values
+	GetStr("CommandLine")
+	GetTextWave("buffer")
+	SetVariable CPLine, title = " ", value = $PackageFolderPath()+"S_CommandLine"
+	ListBox   CPBuffer, mode = 2, listWave = $PackageFolderPath()+"W_buffer"
+	ResizeControls(win)
+
+	// Control actions
+ 	SetVariable CPLine, proc=CommandPanel_Interface#LineAction
+	ListBox   CPBuffer, proc=CommandPanel_Interface#BufferAction
+
 	// Font
-	if(FindListItem(CommandPanel_Font,FontList(";"))>0)
-		SetVariable CPLine, win=$win, font =$CommandPanel_Font
-		ListBox   CPBuffer, win=$win, font =$CommandPanel_Font
-	endif
-	SetVariable CPLine, win=$win, fSize= CommandPanel_FontSize
-	ListBox   CPBuffer, win=$win, fSize= CommandPanel_FontSize
-	// Other Settings
-	ListBox CPBuffer, win=$win, mode=2, listWave=root:Packages:CommandPanel:buffer
-End
-
-// Control Actions
-static Function LineAction(line)
-	STRUCT WMSetVariableAction &line
-	if(line.eventCode>0)
-		MakeControls()
-	endif
-		if(line.eventCode==2)
-	Variable key=line.eventMod
-		if(CommandPanel_KeySwap)
-			key= key==0 ? 2 : ( key == 2 ? 0 : key)
-		endif
-		switch(key)
-		case 0: // Enter
-			CommandPanel_Execute#ExecuteWithLog()
-			break
-		case 2: // Shift + Enter
-			CommandPanel_Complete#Complete()
-			break
-		case 4: // Alt + Enter
-			CommandPanel_Complete#AltComplete()
-			break
-		endswitch
-	endif
-	if(IgorVersion()<7)
-		SetVariable CPLine,win=$GetWinName(),activate
-	endif
-End
-
-static Function BufferAction(buffer)
-	STRUCT WMListboxAction &buffer
-	if(buffer.eventCode==3)//Send a selected string by double clicks. 
-		String line=CommandPanel_GetLine()
-		CommandPanel_SetLine(line+buffer.listWave[buffer.row])
-	endif
-	if(buffer.eventCode>0) //Redraw at any event except for closing. 
-		MakeControls()
-		SetVariable CPLine,win=$GetWinName(),activate
-	endif
-End
-
-// Util
-static Function/WAVE GetTextWave(name)
-	String name
-	DFREF here=GetDataFolderDFR()
-	NewDataFolder/O/S root:Packages
-	NewDataFolder/O/S root:Packages:CommandPanel
-	if(ItemsInList(WaveList(name,";","TEXT:1")))
-		WAVE/T w=$name
+	String font
+	if(FindListItem(CommandPanel_Font,FontList(";")) >= 0)
+		font = CommandPanel_Font
 	else
-		Execute/Z/Q "KillWaves/Z "+name
-		Make/O/T/N=0 $name/WAVE=w
+		font = GetDefaultFont("")
 	endif
-	SetDataFolder here	
-	return w
-End
-static Function SetTextWave(name,w)
-	String name; WAVE/T w
-	WAVE/T f=GetTextWave(name)
-	if(!WaveRefsEqual(f,w))
-		Duplicate/T/O w f
-	endif
-End
+	Execute "SetVariable CPLine, font =$\"" + font + "\""
+	Execute "ListBox   CPBuffer, font =$\"" + font + "\""
+	
+	SetVariable CPLine, fSize = CommandPanel_FontSize
+	ListBox   CPBuffer, fSize = CommandPanel_FontSize
 
-static Function SetFlag(name,value)
-	String name; Variable value
-	NewDataFolder/O root:Packages
-	NewDataFolder/O root:Packages:CommandPanel
-	Variable/G $"root:Packages:CommandPanel:flag_"+name = value
-End
-static Function GetFlag(name)
-	String name
-	NVAR v=$"root:Packages:CommandPanel:flag_"+name
-	return NVAR_Exists(v) && v!=0
+	// Activate
+	Execute/P/Q "SetVariable CPLine, activate"
 End
 
 // WinTitle
-static Function/S WinTitle(s)
-	String s
-	String lhs,rhs=writer#gsub(s,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
-	SVAR S_Value
-	if(SVAR_Exists(S_Value))
-		String tmp=S_Value
-		Execute "S_Value="+rhs
-		lhs=S_Value
-		S_Value=tmp
-	else
-		String/G S_Value	
-		Execute "S_Value="+rhs
-		lhs=S_Value
-		KillStrings/Z S_Value
-	endif
-	return lhs
+static Function/S WinTitle()
+	NewDataFolder/O root:Packages
+	NewDataFolder/O root:Packages:CommandPanel
+	String expr = writer#gsub(CommandPanel_WinTitle,"\\\\|\\\'|\'","",proc=WinTitleSpecialChar)
+	Execute "String/G root:Packages:CommandPanel:S_Title = " + expr
+	SVAR s = root:Packages:CommandPanel:S_Title
+	return s
 End
+
 static Function/S WinTitleSpecialChar(s)
 	String s
 	StrSwitch(s)
@@ -245,3 +150,153 @@ static Function/S WinTitleSpecialChar(s)
 		return s
 	EndSwitch
 End
+
+// Resize
+static Function ResizeControls(win)
+	String win
+	
+	GetWindow $win, wsizeDC
+	Variable width=V_Right-V_Left, height=V_Bottom-V_Top
+	ControlInfo/W=$win CPLine
+	Variable height_in=V_height, height_out=height-height_in
+	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
+	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
+End
+
+////////////////////////////////////////////////////////////////////////////////
+// Window hook & control actions ///////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// Window hook
+static Function WinProc(s)
+	STRUCT WMWinHookStruct &s
+	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
+		ResizeControls(s.winName)
+	endif
+End
+
+// Control actions
+static Function LineAction(line)
+	STRUCT WMSetVariableAction &line
+	
+	DoWindow/T $line.win, WinTitle()
+
+	if(line.eventCode == 2) // key input
+		Variable key = line.eventMod
+		
+		if(CommandPanel_KeySwap)
+			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
+		endif
+		
+		switch(key)
+			case 0: // Enter
+				CommandPanel_Execute#ExecuteLine()
+				//DoWindow/F $line.win
+				break
+			case 2: // Shift + Enter
+				CommandPanel_Complete#Complete()
+				break
+			case 4: // Alt + Enter
+				CommandPanel_Complete#AltComplete()
+				break
+		endswitch
+	endif
+	
+	if(IgorVersion()<7)
+		SetVariable CPLine, win=$line.win, activate
+	endif
+End
+
+static Function BufferAction(buffer)
+	STRUCT WMListboxAction &buffer
+	
+	if(buffer.eventCode == 3) // double click 
+		CommandPanel_SetLine(CommandPanel_GetLine() + buffer.listWave[buffer.row])
+	endif
+	
+	if(buffer.eventCode > 0) // except for closing 
+		DoWindow/T $buffer.win, WinTitle()
+		SetVariable CPLine, win=$buffer.win, activate
+	endif
+End
+
+////////////////////////////////////////////////////////////////////////////////
+// Accessor for package parameters /////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+static Function/S PackageFolderPath()
+	NewDataFolder/O root:Packages
+	NewDataFolder/O root:Packages:CommandPanel
+	return "root:Packages:CommandPanel:"
+End 
+
+static Function/WAVE GetTextWave(name)
+	String name
+	
+	String path = PackageFolderPath() + "W_" + name
+	WAVE/T w = $path
+	if( !WaveExists(w) )
+		Make/O/T/N=0 $path/WAVE=w
+	endif
+
+	return w
+End
+
+static Function SetTextWave(name,w)
+	String name; WAVE/T w
+	
+	String path = PackageFolderPath() + "W_" + name	
+	if( !WaveRefsEqual(w, $path) )
+		Duplicate/T/O w $path
+	endif
+End
+
+static Function GetVar(name)
+	String name
+	
+	String path = PackageFolderPath() + "V_" + name
+	NVAR v = $path
+	if( !NVAR_Exists(v) )
+		Variable/G $path
+		NVAR v = $path
+	endif
+	return v
+End
+
+static Function SetVar(name, v)
+	String name; Variable v
+
+	String path = PackageFolderPath() + "V_" + name
+	NVAR target = $path
+	if( !NVAR_Exists(target) )
+		Variable/G $path
+		NVAR target = $path
+	endif
+	target = v
+End
+
+static Function/S GetStr(name)
+	String name
+	
+	String path = PackageFolderPath() + "S_" + name
+	SVAR s = $path
+	if( !SVAR_Exists(s) )
+		String/G $path
+		SVAR s = $path
+	endif
+	return s
+End
+
+static Function SetStr(name, s)
+	String name, s
+	
+	String path = PackageFolderPath() + "S_" + name
+	SVAR target = $path
+	if( !SVAR_Exists(target) )
+		String/G $path
+		SVAR target = $path
+	endif
+	target = s
+End
+
+

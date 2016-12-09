@@ -20,11 +20,12 @@ Function CommandPanel_Execute(s)
 	endif
 End
 
-static Function ExecuteWithLog()
+static Function ExecuteLine()
 	// initialize
 	InitAlias()
-	CommandPanel_Interface#SetFlag("LineChanged",0)
-	CommandPanel_Interface#SetFlag("BufferChanged",0)
+	
+	CommandPanel_Interface#SetVar("LineChanged",0)
+	CommandPanel_Interface#SetVar("BufferChanged",0)
 
 	// get command
 	String input=CommandPanel_GetLine()
@@ -33,13 +34,7 @@ static Function ExecuteWithLog()
 		return NaN
 	endif
 
-	// expand command
-	WAVE/T cmds =CommandPanel_Expand#Expand(input)
-	if(DimSize(commands,0)==0)
-		Make/FREE/T cmds = {input}
-	endif
-
-	// execute command
+	// expand & execute command
 	Variable error
 	String output=""
 	ExpandAndExecute(input,output,error)
@@ -47,21 +42,21 @@ static Function ExecuteWithLog()
 	// history
 	if(!error)
 		AddHistory(input)
-		if( ! CommandPanel_Interface#GetFlag("LineChanged") )
+		if( ! CommandPanel_Interface#GetVar("LineChanged") )
 			CommandPanel_SetLine("")
 		endif
 	endif
 	
 	// output
-	if( CommandPanel_Interface#GetFlag("BufferChanged") )
+	if( CommandPanel_Interface#GetVar("BufferChanged") )
 		return NaN
 	elseif( strlen(output) )
-		CommandPanel_SetBuffer( writer#split(output,"\r") )
+		CommandPanel_SetBuffer(writer#init(writer#split(output,"\r")))
 	else		
 		ShowHistory()
 	endif
 	
-	DoWindow/F $CommandPanel_interface#GetWinName()
+//	DoWindow/F $CommandPanel_interface#GetWinName()
 End
 
 // expand input and execute
@@ -78,9 +73,9 @@ static Function ExpandAndExecute(input,output,error)
 		Variable ref = CaptureHistoryStart()
 		Execute/Z cmds[i]
 		error = V_Flag
+		print GetErrMessage(error)
 		output += CaptureHistory(ref,ref)
 		if(error) // when an error occurs, stop execution 
-			print GetErrMessage(error)
 			break
 		endif
 	endfor
