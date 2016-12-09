@@ -489,9 +489,9 @@ override Function CompleteOperationName()
 	
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
-	
+
 	Make/FREE/T/N=0 buf
-	Concatenate/T {CommandPanel#GetAliasNames(), oprs}, buf
+	Concatenate/T/NP {CommandPanel#GetAliasNames(), oprs}, buf
 	
 	Extract/T/FREE buf, buf, StringMatch(buf, word + "*")
 	buf = pre + buf
@@ -1207,7 +1207,9 @@ End
 static Function/WAVE map(f,w)
 	FUNCREF Writer_ProtoTypeId f; WAVE/T w
 	WAVE/T buf=cast(w)
-	buf=f(w)
+	if(length(buf))
+		buf=f(w)
+	endif
 	return buf
 End
 
