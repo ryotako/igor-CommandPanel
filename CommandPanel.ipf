@@ -571,15 +571,6 @@ static Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
 End
-static Function/S join(w)
-	WAVE/T w
-	String buf = ""
-	Variable i,N = DimSize(w,0)
-	for(i = 0; i < N; i += 1)
-		buf += w[i]
-	endfor
-	return buf
-End
 static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
 	WAVE/T w1,w2
 	Variable n1 = DimSize(w1, 0), n2 = DimSize(w2, 0)
