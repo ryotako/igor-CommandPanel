@@ -65,11 +65,11 @@ Function TestExpandAlias()
 	eq_text(Alias("a = alias"), {"a=alias"})
 	eq_text(Alias("ts = test"), {"ts=test","a=alias"})
 
-	eq_text(CommandPanel_Expand#ExpandAlias(""), {""})
-	eq_text(CommandPanel_Expand#ExpandAlias("a"), {"alias"})
-	eq_text(CommandPanel_Expand#ExpandAlias("ts"), {"test"})
-	eq_text(CommandPanel_Expand#ExpandAlias("a;a"), {"alias;alias"})
-	eq_text(CommandPanel_Expand#ExpandAlias("aa"), {"aa"})
+	eq_str(CommandPanel_Expand#ExpandAlias(""), "")
+	eq_str(CommandPanel_Expand#ExpandAlias("a"), "alias")
+	eq_str(CommandPanel_Expand#ExpandAlias("ts"), "test")
+	eq_str(CommandPanel_Expand#ExpandAlias("a;a"), "alias;alias")
+	eq_str(CommandPanel_Expand#ExpandAlias("aa"), "aa")
 
 
 	if(WaveExists(backup))
@@ -131,14 +131,14 @@ End
 
 Function TestExpandCompleteParen()
 	// Complete Parenthesis
-	eq_text(CommandPanel_Expand#CompleteParen(""),{""})
-	eq_text(CommandPanel_Expand#CompleteParen(" FunctionForTest "),{" FunctionForTest() "})
-	eq_text(CommandPanel_Expand#CompleteParen(" FunctionForTest () "),{" FunctionForTest () "})
-	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest a, b, c // comment"),{"FunctionForTest(a, b, c) // comment"})
-	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest //"),{"FunctionForTest() //"})
-	eq_text(CommandPanel_Expand#CompleteParen("FunctionForTest \" // \" "),{"FunctionForTest(\" // \") "})
-	eq_text(CommandPanel_Expand#CompleteParen(" StrFunctionForTest "),{" StrFunctionForTest(\"\") "})
-	eq_text(CommandPanel_Expand#CompleteParen("StrFunctionForTest test "),{"StrFunctionForTest(\"test\") "})
+	eq_str(CommandPanel_Expand#CompleteParen(""),"")
+	eq_str(CommandPanel_Expand#CompleteParen(" FunctionForTest ")," FunctionForTest() ")
+	eq_str(CommandPanel_Expand#CompleteParen(" FunctionForTest () ")," FunctionForTest () ")
+	eq_str(CommandPanel_Expand#CompleteParen("FunctionForTest a, b, c // comment"),"FunctionForTest(a, b, c) // comment")
+	eq_str(CommandPanel_Expand#CompleteParen("FunctionForTest //"),"FunctionForTest() //")
+	eq_str(CommandPanel_Expand#CompleteParen("FunctionForTest \" // \" "),"FunctionForTest(\" // \") ")
+	eq_str(CommandPanel_Expand#CompleteParen(" StrFunctionForTest ")," StrFunctionForTest(\"\") ")
+	eq_str(CommandPanel_Expand#CompleteParen("StrFunctionForTest test "),"StrFunctionForTest(\"test\") ")
 End
 
 Function FunctionForTest()
