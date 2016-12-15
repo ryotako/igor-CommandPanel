@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Fri,09 Dec 2016
+// Thu,15 Dec 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -110,31 +110,32 @@ End
 
 override Function/WAVE CommandPanel_GetBuffer()
 	Duplicate/FREE/T GetTextWave("buffer") w
-	w = ReplaceString("\\\\",w,"\\")
+	w = ReplaceString("\\\\", w, "\\")
 	return w
 End
 
-override Function CommandPanel_SetBuffer(w [word,line,buffer])
-	WAVE/T w,word,line,buffer
+override Function CommandPanel_SetBuffer(w [word, line, buffer])
+	WAVE/T w, word, line, buffer
 
 	if(WaveExists(w))
-		w = ReplaceString("\\",w,"\\\\")
-		SetTextWave("buffer",w)
-		SetTextWave("line",w)
-		SetTextWave("word",w)
+		SetTextWave("line", w)
+		SetTextWave("word", w)
+		
+		Make/FREE/T/N=(DimSize(w, 0)) w_buf = ReplaceString("\\", w, "\\\\")
+		SetTextWave("buffer", w_buf)
 	endif
 	if(!ParamIsDefault(word))
-		SetTextWave("word",word)	
+		SetTextWave("word", word)	
 	endif
 	if(!ParamIsDefault(line))
-		SetTextWave("line",line)	
+		SetTextWave("line", line)	
 	endif
 	if(!ParamIsDefault(buffer))
-		buffer = ReplaceString("\\",buffer,"\\\\")
-		SetTextWave("buffer",buffer)
+		buffer = ReplaceString("\\", buffer, "\\\\")
+		SetTextWave("buffer", buffer)
 	endif
 	CommandPanel_SelectRow(0)
-	SetVar("BufferChanged",1)
+	SetVar("BufferChanged", 1)
 End
 
 override Function CommandPanel_SelectedRow()
@@ -555,25 +556,38 @@ static Function/WAVE Expand(input)
 End
 
 
-// Utils
+////////////////////////////////////////////////////////////////////////////////
+// Utilities ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+// s = "123456", w = {"a", "bc", "def"},
+// -> {"1", "23", "456"}.
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
-	Variable i,j,N = DimSize(w,0)
+	Variable i, j, N = DimSize(w, 0)
 	Make/FREE/T/N=(N) buf
 	for(i = 0, j = 0; i < N; j += strlen(w[i]), i += 1)
-		buf[i] = s[j,j+strlen(w[i])-1]
+		buf[i] = s[j, j+strlen(w[i])-1]
 	endfor
 	return buf
 End
+
+// Alias of SplitAs(s, CommandPanel#partition(mask(s), expr))
 static Function/WAVE PartitionWithMask(s,expr)
 	String s,expr
-	return SplitAs(s,CommandPanel#partition(mask(s),expr))
+	return SplitAs(s, CommandPanel#partition(mask(s), expr))
 End
+
+// Remove " "
+// This is used to write regular expressions clearly
 static Function/S trim(s)
 	String s
 	return ReplaceString(" ",s,"")
 End
-static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2"}
+
+// w1 = {"a", "b"}, w2 = {"1", "2"} -> {"a1", "a2", "b1", "b2"}
+static Function/WAVE product(w1,w2)
 	WAVE/T w1,w2
 	Variable n1 = DimSize(w1, 0), n2 = DimSize(w2, 0)
 	if(n1 * n2)
@@ -584,72 +598,79 @@ static Function/WAVE product(w1,w2) //{"a","b"},{"1","2"} -> {"a1","a2","b1","b2
 	return w
 End
 
+////////////////////////////////////////////////////////////////////////////////
+// 0. Escape Sequence //////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-// 0. Escape Sequence {{{1
-// mask
-static strconstant M ="|" // one character for masking
-static Function/S Mask(input)
-	String input
+static strconstant M ="|" // a meaningless character for masking
+
+static Function/S Mask(s)
+	String s
 	
 	// mask comment
-	input=CommandPanel#gsub(input,"//.*$","",proc=Mask_)
-	// mask with ``
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc=Mask_)
-	// mask with ""
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc=Mask_)
-	// mask with \
-	input=CommandPanel#gsub(input,"\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc=Mask_)
+	s = CommandPanel#gsub(s, "//.*$", "", proc = Mask_)
+	// mask `.*`
+	s = CommandPanel#gsub(s, "\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`","",proc = Mask_)
+	// mask ".*"
+	s = CommandPanel#gsub(s, "\\\\\\\\|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\"","",proc = Mask_)
+	// mask \.
+	s = CommandPanel#gsub(s, "\\\\\\\\|\\\\{|\\\\}|\\\\,","",proc = Mask_)
 
-	return input
+	return s
 End
+
 static Function/S Mask_(s)
 	String s
 	Variable i; String buf=""
-	for(i=0;i<strlen(s);i+=1)
-		buf+=M
+	for(i = 0; i < strlen(s); i += 1)
+		buf += M
 	endfor
 	return buf
 End
 
-// unascape
-static Function/S UnescapeBraces(input)
-	String input
+// Unescape
+static Function/S UnescapeBraces(s)
+	String s
 	String ignore = "//.*$|\\\\\\\\|\\\\`|`(\\\\\\\\|\\\\`|[^\\`])*`|\\\\\"|\"(\\\\\\\\|\\\\\"|[^\\\"])*\""
 	String pattern = "\\\\{|\\\\}\\\\,"
-	return CommandPanel#gsub(input,ignore+"|"+pattern,"",proc=UnescapeBrace)
+	return CommandPanel#gsub(s ,ignore+"|"+pattern, "", proc = UnescapeBrace)
 End
+
 static Function/S UnescapeBrace(s)
 	String s
-	return SelectString(GrepString(s,"^\\\\[^\\\\`]$"),s,s[1])
+	return SelectString(GrepString(s, "^\\\\[^\\\\`]$"), s, s[1])
 End
 
 static Function/S UnescapeBackquotes(input)
 	String input
-	return CommandPanel#gsub(input,"//.*$|\\\\\\\\|\\\\`|`","",proc=UnescapeBackquote)
+	return CommandPanel#gsub(input, "//.*$|\\\\\\\\|\\\\`|`", "", proc = UnescapeBackquote)
 End
+
 static Function/S UnescapeBackquote(s)
 	String s
 	return SelectString(StringMatch(s,"`"),s,"")
 End
 
 
-// 1,5. Line Split
-static Function/WAVE LineSplitBy(delim,input,masked)
-	String delim,input ,masked
-	Variable pos = strsearch(masked,delim,0)
-	if(pos<0)
+// 1, 5. Line Split
+static Function/WAVE LineSplitBy(delim, input, masked)
+	String delim, input ,masked
+	Variable pos = strsearch(masked, delim, 0)
+	if(pos < 0)
 		return CommandPanel#cast({input})
 	endif
 	Variable pos2 = pos + strlen(delim)
-	return CommandPanel#cons(input[0,pos-1],LineSplitBy(delim,input[pos2,inf],masked[pos2,inf]))
+	return CommandPanel#cons(input[0, pos-1], LineSplitBy(delim, input[pos2, inf], masked[pos2, inf]))
 End
+
 static Function/WAVE StrongLineSplit(input)
 	String input
-	return LineSplitBy(";;",input,mask(input))
+	return LineSplitBy(";;", input, mask(input))
 End
+
 static Function/WAVE WeakLineSplit(input)
 	String input
-	return LineSplitBy(";",input,mask(input))
+	return LineSplitBy(";", input, mask(input))
 End
 
 
