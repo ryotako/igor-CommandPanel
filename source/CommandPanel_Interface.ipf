@@ -37,31 +37,32 @@ End
 
 Function/WAVE CommandPanel_GetBuffer()
 	Duplicate/FREE/T GetTextWave("buffer") w
-	w = ReplaceString("\\\\",w,"\\")
+	w = ReplaceString("\\\\", w, "\\")
 	return w
 End
 
-Function CommandPanel_SetBuffer(w [word,line,buffer])
-	WAVE/T w,word,line,buffer
+Function CommandPanel_SetBuffer(w [word, line, buffer])
+	WAVE/T w, word, line, buffer
 
 	if(WaveExists(w))
-		w = ReplaceString("\\",w,"\\\\")
-		SetTextWave("buffer",w)
-		SetTextWave("line",w)
-		SetTextWave("word",w)
+		SetTextWave("line", w)
+		SetTextWave("word", w)
+		
+		Make/FREE/T/N=(DimSize(w, 0)) w_buf = ReplaceString("\\", w, "\\\\")
+		SetTextWave("buffer", w_buf)
 	endif
 	if(!ParamIsDefault(word))
-		SetTextWave("word",word)	
+		SetTextWave("word", word)	
 	endif
 	if(!ParamIsDefault(line))
-		SetTextWave("line",line)	
+		SetTextWave("line", line)	
 	endif
 	if(!ParamIsDefault(buffer))
-		buffer = ReplaceString("\\",buffer,"\\\\")
-		SetTextWave("buffer",buffer)
+		buffer = ReplaceString("\\", buffer, "\\\\")
+		SetTextWave("buffer", buffer)
 	endif
 	CommandPanel_SelectRow(0)
-	SetVar("BufferChanged",1)
+	SetVar("BufferChanged", 1)
 End
 
 Function CommandPanel_SelectedRow()
