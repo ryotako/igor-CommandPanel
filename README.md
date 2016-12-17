@@ -14,7 +14,7 @@ CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 - filter outputs or completion candidates with words (regular expressions)．
 
 ## Expansion
-Execute commands by pressing `Enter`．If one pushes `Enter` without inpupt, the command history is displayed．
+Execute commands by pressing `Enter`．If one pushes `Enter` without input, the command history is displayed．
 ### Alias Expansion
 ```
 alias cp=Duplicate
@@ -32,7 +32,7 @@ NewDataFolder sampleB_1
 NewDataFolder sampleB_2
 ```
 ### Pathname expansion
-You can use wildcard * in pathnames.
+You can use wild-card * in pathnames.
 ```
 Display
 AppendToGraph :*:wave*
@@ -45,7 +45,7 @@ DoSomething()
 CompareSomething(a,abs(b))
 PrintSomething("test")
 ```
-These functions can be called as belows.
+These functions can be called as below.
 ```
 DoSomething
 CompareSomething a,abs(b) // You cannot omit () at the second function.
