@@ -211,8 +211,9 @@ End
 static Function BufferAction(buffer)
 	STRUCT WMListboxAction &buffer
 	
-	if(buffer.eventCode == 3) // double click 
-		CommandPanel_SetLine(CommandPanel_GetLine() + buffer.listWave[buffer.row])
+	if(buffer.eventCode == 3) // double click
+		WAVE/T w = GetTextWave("line")
+		CommandPanel_SetLine(CommandPanel_GetLine() + w[buffer.row])
 	endif
 	
 	if(buffer.eventCode > 0) // except for closing 
