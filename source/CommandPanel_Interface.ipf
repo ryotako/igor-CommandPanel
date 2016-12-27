@@ -129,7 +129,7 @@ static Function MakePanel()
 
 	GetTxtWave("buffer")
 	GetNumWave("select")
-	ListBox CPBuffer, mode = 4
+	ListBox CPBuffer, mode = 9
 	ListBox CPBuffer, listWave = $PackagePath()+"W_buffer"
 	ListBox CPBuffer, selWave = $PackagePath()+"W_select"
 
