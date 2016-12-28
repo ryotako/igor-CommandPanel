@@ -136,7 +136,7 @@ static Function MakePanel()
 	ResizeControls(win)
 
 	// Control actions
- 	SetVariable CPLine, proc=CommandPanel_Interface#LineAction
+	SetVariable CPLine, proc=CommandPanel_Interface#LineAction
 	ListBox   CPBuffer, proc=CommandPanel_Interface#BufferAction
 
 	// Font
@@ -169,14 +169,14 @@ End
 static Function/S WinTitleSpecialChar(s)
 	String s
 	StrSwitch(s)
-	case "\\\\":
-		return s
-	case "\\\'":
-		return "\'"
-	case "\'":
-		return "\""
-	default:
-		return s
+		case "\\\\":
+			return s
+		case "\\\'":
+			return "\'"
+		case "\'":
+			return "\""
+		default:
+			return s
 	EndSwitch
 End
 
@@ -205,13 +205,13 @@ static Function WinProc(s)
 End
 
 // Control actions
-static Function LineAction(line)
-	STRUCT WMSetVariableAction &line
+static Function LineAction(s)
+	STRUCT WMSetVariableAction &s
 	
-	DoWindow/T $line.win, WinTitle()
+	DoWindow/T $s.win, WinTitle()
 
-	if(line.eventCode == 2) // key input
-		Variable key = line.eventMod
+	if(s.eventCode == 2) // key input
+		Variable key = s.eventMod
 		
 		if(CommandPanel_KeySwap)
 			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
@@ -232,21 +232,58 @@ static Function LineAction(line)
 	endif
 	
 	if(IgorVersion()<7)
-		SetVariable CPLine, win=$line.win, activate
+		SetVariable CPLine, win=$s.win, activate
 	endif
 End
 
-static Function BufferAction(buffer)
-	STRUCT WMListboxAction &buffer
+static Function BufferAction(s)
+	STRUCT WMListboxAction &s
+	PauseUpdate
+	if(s.eventCode == 1)
+		if(s.eventMod > 15)
+			CommandPanel_SelectRows(GetNumWave("selectedRows"))
+			DoUpdate
+			PopupContextualMenu "execute;clipboad"
+			
+			WAVE/T buf = CommandPanel_GetBuffer()
+			WAVE sel = CommandPanel_SelectedRows()
+			Variable i, N = DimSize(sel, 0)
+
+			strSwitch(S_selection)
+				case "execute":
+					String cmd = ""
+					for(i = 0; i < N; i += 1)
+						cmd += buf[sel[i]] + ";; "
+					endfor
+					cmd = RemoveEnding(cmd, ";; ")
+									
+					// Execute selected rows
+					CommandPanel_SetLine(cmd)
+					CommandPanel_Execute#ExecuteLine()
+					break
+				case "clipboad":
+					String clip = ""
+					for(i = 0; i < N; i += 1)
+						clip += buf[sel[i]] + "\r"
+					endfor
+					clip = RemoveEnding(clip, "\r")
+					
+					PutScrapText clip
+					break	
+			endSwitch
+		endif
+	endif
+
+	SetNumWave("selectedRows", CommandPanel_SelectedRows())
 	
-	if(buffer.eventCode == 3) // double click
+	if(s.eventCode == 3) // double click
 		WAVE/T w = GetTxtWave("line")
-		CommandPanel_SetLine(CommandPanel_GetLine() + w[buffer.row])
+		CommandPanel_SetLine(CommandPanel_GetLine() + w[s.row])
 	endif
 	
-	if(buffer.eventCode > 0) // except for closing 
-		DoWindow/T $buffer.win, WinTitle()
-		SetVariable CPLine, win=$buffer.win, activate
+	if(s.eventCode > 0) // except for closing 
+		DoWindow/T $s.win, WinTitle()
+		SetVariable CPLine, win=$s.win, activate
 	endif
 End
 

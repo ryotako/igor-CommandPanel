@@ -59,7 +59,7 @@ Function TestExpandAlias()
 		Make/O/T/N=0 $path
 	endif
 	Make/FREE/T/N=0 empty
-	CommandPanel_Interface#SetTextWave("alias",empty)
+	CommandPanel_Interface#SetTxtWave("alias",empty)
 	
 	eq_text(Alias(""), $"")
 	eq_text(Alias("a = alias"), {"a=alias"})
@@ -79,7 +79,7 @@ End
 static Function/WAVE Alias(expr)
 	String expr
 	CommandPanel_Execute#Alias(expr)
-	return CommandPanel_Interface#GetTextWave("alias")
+	return CommandPanel_Interface#GetTxtWave("alias")
 End
 
 Function TestExpandBrace()
