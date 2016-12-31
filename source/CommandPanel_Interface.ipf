@@ -243,7 +243,7 @@ static Function BufferAction(s)
 		if(s.eventMod > 15)
 			CommandPanel_SelectRows(GetNumWave("selectedRows"))
 			DoUpdate
-			PopupContextualMenu "execute;clipboad"
+			PopupContextualMenu "execute"
 			
 			WAVE/T buf = CommandPanel_GetBuffer()
 			WAVE sel = CommandPanel_SelectedRows()
@@ -261,15 +261,6 @@ static Function BufferAction(s)
 					CommandPanel_SetLine(cmd)
 					CommandPanel_Execute#ExecuteLine()
 					break
-				case "clipboad":
-					String clip = ""
-					for(i = 0; i < N; i += 1)
-						clip += buf[sel[i]] + "\r"
-					endfor
-					clip = RemoveEnding(clip, "\r")
-					
-					PutScrapText clip
-					break	
 			endSwitch
 		endif
 	endif
