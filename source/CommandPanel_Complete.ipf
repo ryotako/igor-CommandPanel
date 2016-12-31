@@ -6,7 +6,7 @@ constant CommandPanel_IgnoreCase = 1
 
 static Function Complete()
 	String input = CommandPanel_GetLine(), selrow=""
-	WAVE/T line = CommandPanel_Interface#GetTextWave("line")
+	WAVE/T line = CommandPanel_Interface#GetTxtWave("line")
 
 	if(DimSize(line, 0) > 0)
 		selrow = line[CommandPanel_SelectedRow()]
@@ -46,7 +46,7 @@ End
 static Function ScrollBuffer(n)
 	Variable n
 	
-	WAVE/T line = CommandPanel_Interface#GetTextWave("line")
+	WAVE/T line = CommandPanel_Interface#GetTxtWave("line")
 	Variable size = DimSize(line, 0)
 	if(size)
 		Variable num = mod(CommandPanel_SelectedRow() + size + n, size)
@@ -57,9 +57,9 @@ End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	WAVE/T word = CommandPanel_Interface#GetTextWave("word")
-	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("line") line
-	Duplicate/FREE/T CommandPanel_Interface#GetTextWave("buffer") buf
+	WAVE/T word = CommandPanel_Interface#GetTxtWave("word")
+	Duplicate/FREE/T CommandPanel_Interface#GetTxtWave("line") line
+	Duplicate/FREE/T CommandPanel_Interface#GetTxtWave("buffer") buf
 
 	if(DimSize(buf, 0) > 0)
 		String patterns = RemoveFromList("", CommandPanel_GetLine(), " ")

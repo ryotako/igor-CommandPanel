@@ -179,11 +179,11 @@ static Function SetAlias(input)
 		Duplicate/T/FREE GetAlias() alias
 		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
 		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
-		CommandPanel_Interface#SetTextWave("alias",alias)
+		CommandPanel_Interface#SetTxtWave("alias",alias)
 	endif
 End
 static Function/WAVE GetAlias()
-	return CommandPanel_Interface#GetTextWave("alias")
+	return CommandPanel_Interface#GetTxtWave("alias")
 End
 static Function/WAVE GetAliasNames()
 	return writer#map(GetAliasName,GetAlias())
