@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Mon,19 Dec 2016
+// Sat,31 Dec 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -8,6 +8,15 @@
 // original file: CommandPanel_Main.ipf 
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("CommandPanel_Main.ipf",";",""))
+
+
+// 2016-Dec-31
+//		Revisions by Jim Prouty, Igorian Chant Software
+//		Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).
+//		Works with Igor 7.
+
+// 2016-Dec-17
+// 	The first version by Ryota Kobayashi, Tohoku Univ
 
 //#include ":CommandPanel_Menu"
 //#include ":CommandPanel_Interface"
@@ -25,11 +34,9 @@
 //#pragma ModuleName=CommandPanel_Menu
 //#include ":CommandPanel_Interface"
 
-override strconstant CommandPanel_Menu = "CommandPanel"
-
-Menu StringFromList(0,CommandPanel_Menu), dynamic
-	RemoveListItem(0,CommandPanel_Menu)
+Menu "CommandPanel", dynamic
 	"New Command Panel",/Q,CommandPanel#CommandPanel_New()
+	"Help for Command Panel", /Q, DisplayHelpTopic "CommandPanel"
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
 	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
 	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuCommand(2)
@@ -109,53 +116,74 @@ override Function CommandPanel_SetLine(str)
 End
 
 override Function/WAVE CommandPanel_GetBuffer()
-	Duplicate/FREE/T GetTextWave("buffer") w
+	Duplicate/FREE/T GetTxtWave("buffer") w
 	w = ReplaceString("\\\\", w, "\\")
 	return w
 End
 
-override Function CommandPanel_SetBuffer(w [word, line, buffer])
-	WAVE/T w, word, line, buffer
+override Function CommandPanel_SetBuffer(w [, word, line, buffer])
+	WAVE/T/Z w, word, line, buffer
 
 	if(WaveExists(w))
-		SetTextWave("line", w)
-		SetTextWave("word", w)
+		SetTxtWave("line", w)
+		SetTxtWave("word", w)
 		
 		Make/FREE/T/N=(DimSize(w, 0)) w_buf = ReplaceString("\\", w, "\\\\")
-		SetTextWave("buffer", w_buf)
+		SetTxtWave("buffer", w_buf)
 	endif
 	if(!ParamIsDefault(word))
-		SetTextWave("word", word)	
+		SetTxtWave("word", word)	
 	endif
 	if(!ParamIsDefault(line))
-		SetTextWave("line", line)	
+		SetTxtWave("line", line)	
 	endif
 	if(!ParamIsDefault(buffer))
 		buffer = ReplaceString("\\", buffer, "\\\\")
-		SetTextWave("buffer", buffer)
+		SetTxtWave("buffer", buffer)
 	endif
-	CommandPanel_SelectRow(0)
 	SetVar("BufferChanged", 1)
+
+	Make/FREE/D/N=(DimSize(CommandPanel_GetBuffer(), 0)) select
+	SetNumWave("select", select)
+	CommandPanel_SelectRow(0)
 End
 
 override Function CommandPanel_SelectedRow()
-	Variable n
+	WAVE select = GetNumWave("select")
+	Variable n = WaveMin(CommandPanel_SelectedRows())
+	return n == n ? n : 0
+End
 
-	String win = StringFromList(0, WinList("CommandPanel*",";","WIN:64"))
-	if(strlen(win))
-		ControlInfo/W=$win CPBuffer
-		return V_Value
-	endif
+override Function/WAVE CommandPanel_SelectedRows()
+	WAVE select = GetNumWave("select")
+	Make/FREE/N=(DimSize(select, 0)) buf = p
+	Extract/O buf, buf, select
+	return buf
 End
 
 override Function CommandPanel_SelectRow(n)
 	Variable n
-
-	String win = StringFromList(0, WinList("CommandPanel*",";","WIN:64"))
+	
+	CommandPanel_SelectRows({n})
+	
+	String win = StringFromList(0, WinList("CommandPanel*", ";", "WIN:64"))
 	if(strlen(win))
-		ListBox CPBuffer, win=$win, row=n, selrow=n
+		ListBox CPBuffer, win = $win, row = n
 	endif
 End
+
+override Function CommandPanel_SelectRows(w)
+	WAVE/Z w
+	
+	Make/FREE/N=(DimSize(GetNumWave("select"), 0)) select = 0	
+	Variable i, N = DimSize(w, 0)
+	for(i = 0; i < N; i += 1)
+		select[w[i]] = 1
+	endfor
+
+	SetNumWave("select" ,select)
+End
+
 
 /////////////////////////////////////////////////////////////////////////////////
 // Panel Function ///////////////////////////////////////////////////////////////
@@ -175,13 +203,20 @@ static Function MakePanel()
 
 	// Controls & their values
 	GetStr("CommandLine")
-	GetTextWave("buffer")
-	SetVariable CPLine, title = " ", value = $PackageFolderPath()+"S_CommandLine"
-	ListBox   CPBuffer, mode = 2, listWave = $PackageFolderPath()+"W_buffer"
+	SetVariable CPLine, title = " "
+	SetVariable CPLine, value = $PackagePath()+"S_CommandLine"
+
+
+	GetTxtWave("buffer")
+	GetNumWave("select")
+	ListBox CPBuffer, mode = 9
+	ListBox CPBuffer, listWave = $PackagePath()+"W_buffer"
+	ListBox CPBuffer, selWave = $PackagePath()+"W_select"
+
 	ResizeControls(win)
 
 	// Control actions
- 	SetVariable CPLine, proc=CommandPanel#LineAction
+	SetVariable CPLine, proc=CommandPanel#LineAction
 	ListBox   CPBuffer, proc=CommandPanel#BufferAction
 
 	// Font
@@ -214,22 +249,34 @@ End
 static Function/S WinTitleSpecialChar(s)
 	String s
 	StrSwitch(s)
-	case "\\\\":
-		return s
-	case "\\\'":
-		return "\'"
-	case "\'":
-		return "\""
-	default:
-		return s
+		case "\\\\":
+			return s
+		case "\\\'":
+			return "\'"
+		case "\'":
+			return "\""
+		default:
+			return s
 	EndSwitch
 End
+
+#if Exists("PanelResolution") != 3
+Static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
+	String wName
+	return 72 // that is, "pixels"
+End
+#endif
 
 // Resize
 static Function ResizeControls(win)
 	String win
-	
-	GetWindow $win, wsizeDC
+
+	if( PanelResolution(win) == 72 )
+		GetWindow $win wsizeDC		// the new window size in pixels (the Igor 6 way)
+	else
+		GetWindow $win wsize		// the new window size in points (the Igor 7 way, sometimes)
+	endif
+
 	Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine
 	Variable height_in=V_height, height_out=height-height_in
@@ -250,13 +297,13 @@ static Function WinProc(s)
 End
 
 // Control actions
-static Function LineAction(line)
-	STRUCT WMSetVariableAction &line
+static Function LineAction(s)
+	STRUCT WMSetVariableAction &s
 	
-	DoWindow/T $line.win, WinTitle()
+	DoWindow/T $s.win, WinTitle()
 
-	if(line.eventCode == 2) // key input
-		Variable key = line.eventMod
+	if(s.eventCode == 2) // key input
+		Variable key = s.eventMod
 		
 		if(CommandPanel_KeySwap)
 			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
@@ -265,7 +312,9 @@ static Function LineAction(line)
 		switch(key)
 			case 0: // Enter
 				CommandPanel#ExecuteLine()
-				//DoWindow/F $line.win
+				if(IgorVersion()<7)
+					SetVariable CPLine, win=$s.win, activate
+				endif
 				break
 			case 2: // Shift + Enter
 				CommandPanel#Complete()
@@ -277,21 +326,49 @@ static Function LineAction(line)
 	endif
 	
 	if(IgorVersion()<7)
-		SetVariable CPLine, win=$line.win, activate
+		SetVariable CPLine, win=$s.win, activate
 	endif
 End
 
-static Function BufferAction(buffer)
-	STRUCT WMListboxAction &buffer
+static Function BufferAction(s)
+	STRUCT WMListboxAction &s
+	PauseUpdate
+	if(s.eventCode == 1)
+		if(s.eventMod > 15)
+			CommandPanel_SelectRows(GetNumWave("selectedRows"))
+			DoUpdate
+			PopupContextualMenu "execute"
+			
+			WAVE/T buf = CommandPanel_GetBuffer()
+			WAVE sel = CommandPanel_SelectedRows()
+			Variable i, N = DimSize(sel, 0)
+
+			strSwitch(S_selection)
+				case "execute":
+					String cmd = ""
+					for(i = 0; i < N; i += 1)
+						cmd += buf[sel[i]] + ";; "
+					endfor
+					cmd = RemoveEnding(cmd, ";; ")
+									
+					// Execute selected rows
+					CommandPanel_SetLine(cmd)
+					CommandPanel#ExecuteLine()
+					break
+			endSwitch
+		endif
+	endif
+
+	SetNumWave("selectedRows", CommandPanel_SelectedRows())
 	
-	if(buffer.eventCode == 3) // double click
-		WAVE/T w = GetTextWave("line")
-		CommandPanel_SetLine(CommandPanel_GetLine() + w[buffer.row])
+	if(s.eventCode == 3) // double click
+		WAVE/T w = GetTxtWave("line")
+		CommandPanel_SetLine(CommandPanel_GetLine() + w[s.row])
 	endif
 	
-	if(buffer.eventCode > 0) // except for closing 
-		DoWindow/T $buffer.win, WinTitle()
-		SetVariable CPLine, win=$buffer.win, activate
+	if(s.eventCode > 0) // except for closing 
+		DoWindow/T $s.win, WinTitle()
+		SetVariable CPLine, win=$s.win, activate
 	endif
 End
 
@@ -299,17 +376,38 @@ End
 // Accessor for package parameters /////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-static Function/S PackageFolderPath()
+static Function/S PackagePath()
 	NewDataFolder/O root:Packages
 	NewDataFolder/O root:Packages:CommandPanel
 	return "root:Packages:CommandPanel:"
 End 
 
-static Function/WAVE GetTextWave(name)
+static Function/WAVE GetNumWave(name)
 	String name
 	
-	String path = PackageFolderPath() + "W_" + name
-	WAVE/T w = $path
+	String path = PackagePath() + "W_" + name
+	WAVE/Z w = $path
+	if( !WaveExists(w) )
+		Make/O/N=0 $path/WAVE=w
+	endif
+
+	return w
+End
+
+static Function SetNumWave(name,w)
+	String name; WAVE w
+	
+	String path = PackagePath() + "W_" + name	
+	if( !WaveRefsEqual(w, $path) )
+		Duplicate/O w $path
+	endif
+End
+
+static Function/WAVE GetTxtWave(name)
+	String name
+	
+	String path = PackagePath() + "W_" + name
+	WAVE/T/Z w = $path
 	if( !WaveExists(w) )
 		Make/O/T/N=0 $path/WAVE=w
 	endif
@@ -317,10 +415,10 @@ static Function/WAVE GetTextWave(name)
 	return w
 End
 
-static Function SetTextWave(name,w)
+static Function SetTxtWave(name,w)
 	String name; WAVE/T w
 	
-	String path = PackageFolderPath() + "W_" + name	
+	String path = PackagePath() + "W_" + name	
 	if( !WaveRefsEqual(w, $path) )
 		Duplicate/T/O w $path
 	endif
@@ -329,8 +427,8 @@ End
 static Function GetVar(name)
 	String name
 	
-	String path = PackageFolderPath() + "V_" + name
-	NVAR v = $path
+	String path = PackagePath() + "V_" + name
+	NVAR/Z v = $path
 	if( !NVAR_Exists(v) )
 		Variable/G $path
 		NVAR v = $path
@@ -341,8 +439,8 @@ End
 static Function SetVar(name, v)
 	String name; Variable v
 
-	String path = PackageFolderPath() + "V_" + name
-	NVAR target = $path
+	String path = PackagePath() + "V_" + name
+	NVAR/Z target = $path
 	if( !NVAR_Exists(target) )
 		Variable/G $path
 		NVAR target = $path
@@ -353,8 +451,8 @@ End
 static Function/S GetStr(name)
 	String name
 	
-	String path = PackageFolderPath() + "S_" + name
-	SVAR s = $path
+	String path = PackagePath() + "S_" + name
+	SVAR/Z s = $path
 	if( !SVAR_Exists(s) )
 		String/G $path
 		SVAR s = $path
@@ -365,8 +463,8 @@ End
 static Function SetStr(name, s)
 	String name, s
 	
-	String path = PackageFolderPath() + "S_" + name
-	SVAR target = $path
+	String path = PackagePath() + "S_" + name
+	SVAR/Z target = $path
 	if( !SVAR_Exists(target) )
 		String/G $path
 		SVAR target = $path
@@ -391,7 +489,7 @@ override constant CommandPanel_IgnoreCase = 1
 
 static Function Complete()
 	String input = CommandPanel_GetLine(), selrow=""
-	WAVE/T line = CommandPanel#GetTextWave("line")
+	WAVE/T line = CommandPanel#GetTxtWave("line")
 
 	if(DimSize(line, 0) > 0)
 		selrow = line[CommandPanel_SelectedRow()]
@@ -431,7 +529,7 @@ End
 static Function ScrollBuffer(n)
 	Variable n
 	
-	WAVE/T line = CommandPanel#GetTextWave("line")
+	WAVE/T line = CommandPanel#GetTxtWave("line")
 	Variable size = DimSize(line, 0)
 	if(size)
 		Variable num = mod(CommandPanel_SelectedRow() + size + n, size)
@@ -442,9 +540,9 @@ End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	WAVE/T word = CommandPanel#GetTextWave("word")
-	Duplicate/FREE/T CommandPanel#GetTextWave("line") line
-	Duplicate/FREE/T CommandPanel#GetTextWave("buffer") buf
+	WAVE/T word = CommandPanel#GetTxtWave("word")
+	Duplicate/FREE/T CommandPanel#GetTxtWave("line") line
+	Duplicate/FREE/T CommandPanel#GetTxtWave("buffer") buf
 
 	if(DimSize(buf, 0) > 0)
 		String patterns = RemoveFromList("", CommandPanel_GetLine(), " ")
@@ -707,11 +805,11 @@ static Function SetAlias(input)
 		Duplicate/T/FREE GetAlias() alias
 		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
 		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
-		CommandPanel#SetTextWave("alias",alias)
+		CommandPanel#SetTxtWave("alias",alias)
 	endif
 End
 static Function/WAVE GetAlias()
-	return CommandPanel#GetTextWave("alias")
+	return CommandPanel#GetTxtWave("alias")
 End
 static Function/WAVE GetAliasNames()
 	return CommandPanel#map(GetAliasName,GetAlias())
@@ -1406,7 +1504,7 @@ static Function Alias(s)
 	if(strlen(s))
 		return CommandPanel#SetAlias(s)		
 	endif
-	CommandPanel_SetBuffer( CommandPanel#GetTextWave("alias") )
+	CommandPanel_SetBuffer( CommandPanel#GetTxtWave("alias") )
 End 
 static Function InitAlias()
 	WAVE/T w=CommandPanel#GetAlias()
@@ -1418,7 +1516,7 @@ End
 // History
 static Function/WAVE AddHistory(command)
 	String command
-	WAVE/T history=CommandPanel#GetTextWave("history")
+	WAVE/T history=CommandPanel#GetTxtWave("history")
 	// Remove Duplications
 	if(CommandPanel_HistEraseDups)
 		Extract/T/O history,history,cmpstr(history,command)
@@ -1443,7 +1541,7 @@ static Function/WAVE AddHistory(command)
 End
 
 static Function ShowHistory()
-	CommandPanel_SetBuffer( CommandPanel#GetTextWave("history") )
+	CommandPanel_SetBuffer( CommandPanel#GetTxtWave("history") )
 End
 
 #endif

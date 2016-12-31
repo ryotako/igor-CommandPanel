@@ -93,7 +93,7 @@ static Function Alias(s)
 	if(strlen(s))
 		return CommandPanel_Expand#SetAlias(s)		
 	endif
-	CommandPanel_SetBuffer( CommandPanel_Interface#GetTextWave("alias") )
+	CommandPanel_SetBuffer( CommandPanel_Interface#GetTxtWave("alias") )
 End 
 static Function InitAlias()
 	WAVE/T w=CommandPanel_Expand#GetAlias()
@@ -105,7 +105,7 @@ End
 // History
 static Function/WAVE AddHistory(command)
 	String command
-	WAVE/T history=CommandPanel_Interface#GetTextWave("history")
+	WAVE/T history=CommandPanel_Interface#GetTxtWave("history")
 	// Remove Duplications
 	if(CommandPanel_HistEraseDups)
 		Extract/T/O history,history,cmpstr(history,command)
@@ -130,5 +130,5 @@ static Function/WAVE AddHistory(command)
 End
 
 static Function ShowHistory()
-	CommandPanel_SetBuffer( CommandPanel_Interface#GetTextWave("history") )
+	CommandPanel_SetBuffer( CommandPanel_Interface#GetTxtWave("history") )
 End
