@@ -2,11 +2,14 @@
 
 CommandPanel.ipf provides an alternative commandline interface for Igor Pro．
 
-**This procedure do not work in Igor Pro 7!**
-
+[IgorExchange](http://www.igorexchange.com/project/CommandPanel)
 [Wiki(Japanese)](https://github.com/ryotako/igor-CommandPanel/wiki)
 
 ![Demo](https://github.com/ryotako/igor-CommandPanel/blob/master/Demo.gif)
+
+## Installation
+Put 'CommandPanel.ipf' in your `User Procedure` folder or `Igor Procedure` folder
+and put 'CommandPanel Help.ihf' in your `Igor Help Files` folder.
 
 ## Features
 - bash-like alias expansion, brace expansion, and pathname expansion.
