@@ -173,7 +173,7 @@ override Function CommandPanel_SelectRow(n)
 End
 
 override Function CommandPanel_SelectRows(w)
-	WAVE w
+	WAVE/Z w
 	
 	Make/FREE/N=(DimSize(GetNumWave("select"), 0)) select = 0	
 	Variable i, N = DimSize(w, 0)
