@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
 // This procedure file is packaged by igmodule
-// Wed,28 Dec 2016
+// Sat,31 Dec 2016
 //------------------------------------------------------------------------------
 #pragma ModuleName=CommandPanel
 
@@ -8,6 +8,15 @@
 // original file: CommandPanel_Main.ipf 
 //------------------------------------------------------------------------------
 #if !ItemsInList(WinList("CommandPanel_Main.ipf",";",""))
+
+
+// 2016-Dec-31
+//		Revisions by Jim Prouty, Igorian Chant Software
+//		Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).
+//		Works with Igor 7.
+
+// 2016-Dec-17
+// 	The first version by Ryota Kobayashi, Tohoku Univ
 
 //#include ":CommandPanel_Menu"
 //#include ":CommandPanel_Interface"
@@ -25,11 +34,9 @@
 //#pragma ModuleName=CommandPanel_Menu
 //#include ":CommandPanel_Interface"
 
-override strconstant CommandPanel_Menu = "CommandPanel"
-
-Menu StringFromList(0,CommandPanel_Menu), dynamic
-	RemoveListItem(0,CommandPanel_Menu)
+Menu "CommandPanel", dynamic
 	"New Command Panel",/Q,CommandPanel#CommandPanel_New()
+	"Help for Command Panel", /Q, DisplayHelpTopic "CommandPanel"
 	CommandPanel#MenuItem(0),  /Q, CommandPanel#MenuCommand(0)
 	CommandPanel#MenuItem(1),  /Q, CommandPanel#MenuCommand(1)
 	CommandPanel#MenuItem(2),  /Q, CommandPanel#MenuCommand(2)
@@ -114,8 +121,8 @@ override Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-override Function CommandPanel_SetBuffer(w [word, line, buffer])
-	WAVE/T w, word, line, buffer
+override Function CommandPanel_SetBuffer(w [, word, line, buffer])
+	WAVE/T/Z w, word, line, buffer
 
 	if(WaveExists(w))
 		SetTxtWave("line", w)
@@ -253,11 +260,23 @@ static Function/S WinTitleSpecialChar(s)
 	EndSwitch
 End
 
+#if Exists("PanelResolution") != 3
+Static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
+	String wName
+	return 72 // that is, "pixels"
+End
+#endif
+
 // Resize
 static Function ResizeControls(win)
 	String win
-	
-	GetWindow $win, wsizeDC
+
+	if( PanelResolution(win) == 72 )
+		GetWindow $win wsizeDC		// the new window size in pixels (the Igor 6 way)
+	else
+		GetWindow $win wsize		// the new window size in points (the Igor 7 way, sometimes)
+	endif
+
 	Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine
 	Variable height_in=V_height, height_out=height-height_in
@@ -293,7 +312,9 @@ static Function LineAction(s)
 		switch(key)
 			case 0: // Enter
 				CommandPanel#ExecuteLine()
-				//DoWindow/F $line.win
+				if(IgorVersion()<7)
+					SetVariable CPLine, win=$s.win, activate
+				endif
 				break
 			case 2: // Shift + Enter
 				CommandPanel#Complete()
@@ -316,7 +337,7 @@ static Function BufferAction(s)
 		if(s.eventMod > 15)
 			CommandPanel_SelectRows(GetNumWave("selectedRows"))
 			DoUpdate
-			PopupContextualMenu "execute;clipboad"
+			PopupContextualMenu "execute"
 			
 			WAVE/T buf = CommandPanel_GetBuffer()
 			WAVE sel = CommandPanel_SelectedRows()
@@ -334,15 +355,6 @@ static Function BufferAction(s)
 					CommandPanel_SetLine(cmd)
 					CommandPanel#ExecuteLine()
 					break
-				case "clipboad":
-					String clip = ""
-					for(i = 0; i < N; i += 1)
-						clip += buf[sel[i]] + "\r"
-					endfor
-					clip = RemoveEnding(clip, "\r")
-					
-					PutScrapText clip
-					break	
 			endSwitch
 		endif
 	endif
@@ -374,7 +386,7 @@ static Function/WAVE GetNumWave(name)
 	String name
 	
 	String path = PackagePath() + "W_" + name
-	WAVE w = $path
+	WAVE/Z w = $path
 	if( !WaveExists(w) )
 		Make/O/N=0 $path/WAVE=w
 	endif
@@ -395,7 +407,7 @@ static Function/WAVE GetTxtWave(name)
 	String name
 	
 	String path = PackagePath() + "W_" + name
-	WAVE/T w = $path
+	WAVE/T/Z w = $path
 	if( !WaveExists(w) )
 		Make/O/T/N=0 $path/WAVE=w
 	endif
@@ -416,7 +428,7 @@ static Function GetVar(name)
 	String name
 	
 	String path = PackagePath() + "V_" + name
-	NVAR v = $path
+	NVAR/Z v = $path
 	if( !NVAR_Exists(v) )
 		Variable/G $path
 		NVAR v = $path
@@ -428,7 +440,7 @@ static Function SetVar(name, v)
 	String name; Variable v
 
 	String path = PackagePath() + "V_" + name
-	NVAR target = $path
+	NVAR/Z target = $path
 	if( !NVAR_Exists(target) )
 		Variable/G $path
 		NVAR target = $path
@@ -440,7 +452,7 @@ static Function/S GetStr(name)
 	String name
 	
 	String path = PackagePath() + "S_" + name
-	SVAR s = $path
+	SVAR/Z s = $path
 	if( !SVAR_Exists(s) )
 		String/G $path
 		SVAR s = $path
@@ -452,7 +464,7 @@ static Function SetStr(name, s)
 	String name, s
 	
 	String path = PackagePath() + "S_" + name
-	SVAR target = $path
+	SVAR/Z target = $path
 	if( !SVAR_Exists(target) )
 		String/G $path
 		SVAR target = $path

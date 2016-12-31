@@ -1,5 +1,6 @@
 #include "MinTest"
 #include "CommandPanel_Interface"
+#include "writer_as_w"
 
 #pragma ModuleName=CmdPIT
 
@@ -43,7 +44,7 @@ Function TestCommandPanel_New()
 	eq_str(CommandPanel_GetLine(), "test2")
 
 
-	CommandPanel_SetBuffer({"test"})
+	CommandPanel_SetBuffer(w#cast({"test"}))
 	eq_text(CommandPanel_GetBuffer(), {"test"})
 	
 	Execute/P/Q "cmdpit#teardown()"
