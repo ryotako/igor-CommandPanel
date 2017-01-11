@@ -1,27 +1,23 @@
 #pragma ModuleName = CommandPanel
 
-/////////////////////////////////////////////////////////////////////////////////
-// 2016-Dec-31                                                                 //
-//		Revisions by Jim Prouty, Igorian Chant Software                          //
-//		Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).//
-//		Works with Igor 7.                                                       //
-//                                                                             //
-// 2016-Dec-17                                                                 //
-// 	The first version by Ryota Kobayashi, Tohoku Univ.                       //
-/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// 2016-Dec-31                                                                //
+//   Revisions by Jim Prouty, Igorian Chant Software                          //
+//   Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).//
+//   Works with Igor 7.                                                       //
+//                                                                            //
+// 2016-Dec-17                                                                //
+//   The first version by Ryota Kobayashi, Tohoku Univ.                       //
+////////////////////////////////////////////////////////////////////////////////
 
-=================================================================================
-	Public functions
-=================================================================================
+//==============================================================================
+// Public functions
+//==============================================================================
 
 Function CommandPanel_New()
-	if( ! DataFolderExists("root:Packages:CommandPanel") )
-		SetDefault_Interface()
-		SetDefault_Execution()	
-	endif
-	
 	MakePanel()
 End
+
 Function/S CommandPanel_GetLine()
 	return GetStr("CommandLine")
 End
@@ -104,6 +100,7 @@ End
 
 Function CommandPanel_Execute(s)
 	String s
+
 	if(strlen(s))
 		Variable error; String out
 		ExpandAndExecute(s,out,error)
@@ -113,9 +110,9 @@ Function CommandPanel_Execute(s)
 	endif
 End
 
-=================================================================================
-	Menus
-=================================================================================
+//==============================================================================
+//	Menus
+//==============================================================================
 
 Menu "CommandPanel", dynamic
 	"New Command Panel", /Q, CommandPanel_New()
@@ -142,8 +139,8 @@ Menu "CommandPanel", dynamic
 	"-"
 	"Help for Command Panel", /Q, DisplayHelpTopic "CommandPanel"
 	"-"
-	"Settings [Interface]", /Q, CommandPanel#Setting_Interface()
-	"Settings [Execution]", /Q, CommandPanel#Setting_Execution()
+	"Settings [Interface]", /Q, CommandPanel#ConfigureInterface()
+	"Settings [Execution]", /Q, CommandPanel#ConfigureExecution()
 	"Save Settings", /Q, Abort "unimplemented"
 End
 
@@ -159,44 +156,27 @@ static Function MenuCommand_ShowPanel(i)
 	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
 End
 
-=================================================================================
-	Interface
-=================================================================================
+//==============================================================================
+// Interface
+//==============================================================================
 
----------------------------------------------------------------------------------
-	Settings about the interface 
----------------------------------------------------------------------------------
-
-static Function SetDefault_Interface()
+//------------------------------------------------------------------------------
+// Configure
+//------------------------------------------------------------------------------
+static Function ConfigureInterface()
 	// Font
-	SetStr("lineFont", GetDefaultFont(""))
-	SetStr("bufferFont", GetDefaultFont(""))
-	SetVar("lineFontSize", 14)
-	SetVar("bufferFontSize", 14)
-
-	// Window
-	SetVar("winWidth", 300)
-	SetVar("winHeight", 300)
-	SetStr("winTitle", "\"[\"+IgorInfo(1)+\"] \"+GetDataFolder(1)")
-	
-	// Key
-	SetVar("swapKeys", 0)
-End
-
-static Function Setting_Interface()
-	// Font
-	String lineFont = GetStr("lineFont")
-	String bufferFont = GetStr("bufferFont")
-	Variable lineFontSize = GetVar("lineFontSize")
-	Variable bufferFontSize = GetVar("bufferFontSize")
+	String lineFont = GetConfig("lineFont", GetDefaultFont(""))
+	String bufferFont = GetConfig("bufferFont", GetDefaultFont(""))
+	Variable lineFontSize = Str2Num( GetConfig("lineFontSize", "14") )
+	Variable bufferFontSize = Str2Num( GetConfig("bufferFontSize", "14") )
 	
 	// Window
-	Variable winWidth = GetVar("winWidth")
-	Variable winHeight = GetVar("winHeight")
-	String winTitle = GetStr("winTitle")
+	Variable winWidth = Str2Num( GetConfig("winWidth", "300") )
+	Variable winHeight = Str2Num( GetConfig("winHeight", "300") )
+	String winTitle = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
 	
 	// Key
-	String swapKeys = SelectString(GetVar("swapKey"), "No", "Yes")
+	String swapKeys = SelectString(GetVar("swapKeys"), "No", "Yes")
 	
 	Prompt lineFont, "command-line font", popup, FontList(";") 
 	Prompt bufferFont, "buffer font", popup, FontList(";")
@@ -209,25 +189,28 @@ static Function Setting_Interface()
 
 	DoPrompt/HELP="" "CommandPanel Interface Settings", lineFont, bufferFont, lineFontSize, lineFontSize, winWidth, winHeight, winTitle, swapKeys
 	
-	SetStr("lineFont", lineFont)
-	SetStr("bufferFont", bufferFont)
+	SetConfig("lineFont", lineFont)
+	SetConfig("bufferFont", bufferFont)
 
-	SetVar("lineFontSize", lineFontSize)
-	SetVar("bufferFontSize", bufferFontSize)
+	SetConfig("lineFontSize", Num2Str(lineFontSize) )
+	SetConfig("bufferFontSize", Num2Str(bufferFontSize) )
 
-	SetVar("winWidth", winWidth)
-	SetVar("winHeight", winHeight)
+	SetConfig("winWidth", Num2Str(winWidth) )
+	SetConfig("winHeight", Num2Str(winHeight) )
 	
-	SetStr("winTitle", winTitle)
-	SetVar("swapKeys", StringMatch(swapKeys, "Yes"))
+	SetConfig("winTitle", winTitle)
+	SetConfig("swapKeys", swapKeys)
 End
 
----------------------------------------------------------------------------------
-	Functions to build a panel 
----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Panel building
+//------------------------------------------------------------------------------
 
 static Function MakePanel()
-	NewPanel/K=1/W=(0, 0, GetVar("winWidth"), GetVar("winHeight"))/N=CommandPanel
+	Variable width = Str2Num( GetConfig("winWidth", "300") )
+	Variable height = Str2Num( GetConfig("winHeight", "300") )
+	
+	NewPanel/K=1/W=(0, 0, width, height)/N=CommandPanel
 	String win = S_Name
 	
 	// Title
@@ -255,21 +238,28 @@ static Function MakePanel()
 	ListBox   CPBuffer, proc = CommandPanel#BufferAction
 
 	// Font
-	Execute "SetVariable CPLine, font =$\"" + GetStr("lineFont") + "\""
-	Execute "ListBox CPBuffer, font =$\"" + GetStr("bufferFont") + "\""
+	String lFont = GetConfig("lineFont", GetDefaultFont(""))
+	String bFont = GetConfig("bufferFont", GetDefaultFont(""))
+	Execute "SetVariable CPLine, font =$\"" + lfont + "\""
+	Execute "ListBox CPBuffer, font =$\"" + bfont + "\""
 	
-	SetVariable CPLine, fSize = GetVar("lineFontSize")
-	ListBox CPBuffer, fSize = GetVar("bufferFontSize")
+	Variable lFSize = Str2Num( GetConfig("lineFontSize", "14") )
+	Variable bFSize = Str2Num( GetConfig("lineBufferSize", "14") )
+
+	SetVariable CPLine, fSize = lFSize
+	ListBox CPBuffer, fSize = bFSize
 
 	// Activate
-	Execute/P/Q "SetVariable CPLine, activate"
+	Execute/P/Q "SetVariable CPLine, win=$\"" + win + "\", activate"
 End
 
 static Function/S WinTitle()
-	NewDataFolder/O root:Packages
-	NewDataFolder/O root:Packages:CommandPanel
-	Execute/Z "String/G root:Packages:CommandPanel:S_winTitleEvaluated = " + GetStr("winTitle")
-	return GetStr("winTitleExaluated")
+	String path = "root:Packages:CommandPanel:S_winTitleEvaluated"
+	String title = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
+	String cmd
+	sprintf cmd, "String/G %s = %s", path, title
+	Execute/Z cmd
+	return GetStr("winTitleEvaluated")
 End
 
 #if Exists("PanelResolution") != 3
@@ -296,9 +286,9 @@ static Function ResizeControls(win)
 	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
 End
 
----------------------------------------------------------------------------------
-	hook functions & control actions
----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// hook functions & control actions
+//------------------------------------------------------------------------------
 
 // Window hook
 static Function WinProc(s)
@@ -317,14 +307,14 @@ static Function LineAction(s)
 	if(s.eventCode == 2) // key input
 		Variable key = s.eventMod
 		
-		if(GetVar("swapKeys"))
+		if(StringMatch(GetConfig("swapKeys", "No"), "Yes"))
 			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
 		endif
 		
 		switch(key)
 			case 0: // Enter
 				ExecuteLine(s.win)
-				if(IgorVersion()<7)
+				if(IgorVersion() < 7)
 					SetVariable/Z CPLine, win=$s.win, activate
 				endif
 				break
@@ -337,19 +327,20 @@ static Function LineAction(s)
 		endswitch
 	endif
 	
-	if(IgorVersion()<7)
+	if(IgorVersion() < 7)
 		SetVariable/Z CPLine, win=$s.win, activate
 	endif
 End
 
 static Function BufferAction(s)
 	STRUCT WMListboxAction &s
-	PauseUpdate
-	if(s.eventCode == 1)
-		if(s.eventMod > 15)
-			CommandPanel_SelectRows(GetNumWave("CommandPanel_SelectedRows"))
-			DoUpdate
-			PopupContextualMenu "execute"
+
+	if(s.eventCode == 1) // mouse down
+		if(s.eventMod > 15) // contextual menu click
+			CommandPanel_SelectRows(GetNumWave("selectedRows"))
+			DoUpdate // necessary for multiple line selection
+			
+			PopupContextualMenu "execute;" // other contextual menu items are unimplemented
 			
 			WAVE/T buf = CommandPanel_GetBuffer()
 			WAVE sel = CommandPanel_SelectedRows()
@@ -371,7 +362,7 @@ static Function BufferAction(s)
 		endif
 	endif
 
-	SetNumWave("CommandPanel_SelectedRows", CommandPanel_SelectedRows())
+	SetNumWave("selectedRows", CommandPanel_SelectedRows())
 	
 	if(s.eventCode == 3) // double click
 		WAVE/T w = GetTxtWave("line")
@@ -384,34 +375,23 @@ static Function BufferAction(s)
 	endif
 End
 
-=================================================================================
-	Execution
-=================================================================================
+//==============================================================================
+// Execution
+//==============================================================================
 
----------------------------------------------------------------------------------
-	Settings about the execution
----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//	Configure
+//------------------------------------------------------------------------------
 
-static Function SetDefault_Execution()
-	// history size
-	SetVar("histSize", inf)
-
-	// ignoring
-	SetVar("histEraseDups", 0)
-	SetVar("histIgnoreDups", 0)
-	SetVar("histIgnoreSpace", 0)
-	SetStr("histIgnore", ";")
+static Function ConfigureExecution()
+	Variable histSize = Str2Num( GetConfig("histSize", "inf") )
+	Variable histIgnoreDups = StringMatch( GetConfig("histIgnoreDups", "No"), "Yes")
+	Variable histEraseDups = StringMatch( GetConfig("histEraseDups", "No"), "Yes" )
+	Variable histControl = 1 + histIgnoreDups + 2 * histEraseDups
 	
-	// focus
-	SetVar("refocus", 0)
-End
-
-static Function Setting_Execution()
-	Variable histSize = GetVar("histSize")
-	Variable histControl = 1 + GetVar("histIgnoreDups") + 2* GetVar("histEraseDups")
-	String histIgnoreSpace = SelectString(GetVar("histIgnoreSpace"), "No", "Yes")
-	String histIgnore = GetStr("histIgnore")
-	String refocus = SelectString(GetVar("refocus"), "No", "Yes")
+	String histIgnoreSpace = GetConfig("histIgnoreSpace", "No")
+	String histIgnore = GetConfig("histIgnore", ";")
+	String refocus = GetConfig("refocus", "No")
 	
 	Prompt histSize, "maximum number of commands to save on the history"
 	Prompt histControl, "unsave duplicate commands", popup, "save duplicates;unsave consecutive duplicates;unsave all duplicates"
@@ -422,31 +402,32 @@ static Function Setting_Execution()
 	DoPrompt/HELP="" "CommandPanel Execution Settings", histSize, histControl, histIgnoreSpace, histIgnore, refocus
 	
 
-	SetVar("histSize", histSize)
-	SetVar("histEraseDups", histControl == 3)
-	SetVar("histIgnoreDups", histControl == 2)
-	SetVar("histIgnoreSpace", StringMatch(histIgnoreSpace, "Yes"))
-	SetStr("histIgnore", histIgnore)
-	SetVar("refocus", StringMatch(refocus, "Yes"))
+	SetConfig("histSize", Num2Str(histSize) )
+	SetConfig("histEraseDups", SelectString(histControl == 3, "No", "Yes") )
+	SetConfig("histIgnoreDups", SelectString(histControl == 2, "No", "Yes") )
+	SetConfig("histIgnoreSpace", histIgnoreSpace)
+	SetConfig("histIgnore", histIgnore)
+	SetConfig("refocus", refocus)
 End
 
----------------------------------------------------------------------------------
-	Execution
----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Execution
+//------------------------------------------------------------------------------
 
 static Function ExecuteLine(win)
 	String win
 
-	// initialize
-	InitAlias()
-	
+	if(null(GetAlias("")))
+		Alias("alias=CommandPanel#Alias")
+	endif
+		
 	SetVar("LineChanged",0)
 	SetVar("BufferChanged",0)
 
 	// get command
 	String input=CommandPanel_GetLine()
 	if(strlen(input)==0)
-		ShowHistory()
+		History()
 		return NaN
 	endif
 
@@ -457,13 +438,13 @@ static Function ExecuteLine(win)
 	
 	// history
 	if(!error)
-		AddHistory(input)
+		SetHistory(input)
 		if( ! GetVar("LineChanged") )
 			CommandPanel_SetLine("")
 		endif
 	endif
 	
-	if(GetVar("refocus"))
+	if( StringMatch(GetConfig("refocus", "No"), "Yes") )
 		DoWindow/F $win
 	endif
 	
@@ -473,7 +454,7 @@ static Function ExecuteLine(win)
 	elseif( strlen(output) )
 		CommandPanel_SetBuffer(init(split(output,"\r")))
 	else		
-		ShowHistory()
+		History()
 	endif
 	
 End
@@ -499,73 +480,65 @@ static Function ExpandAndExecute(input, output, error)
 	endfor
 End
 
----------------------------------------------------------------------------------
-	Alias
----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// History
+//------------------------------------------------------------------------------
 
-static Function Alias(s)
-	String s
-	if(strlen(s))
-		return SetAlias(s)		
+
+static FUnction SetHistory(cmd)
+	String cmd
+	
+	WAVE/T w = GetTxtWave("history")
+	
+	// histEraseDups option
+	if( StringMatch(GetConfig("histEraseDups", "No"), "Yes") )
+		Extract/T/O w, w, cmpstr(w, cmd)
 	endif
-	CommandPanel_SetBuffer( GetTxtWave("alias") )
-End
 
-static Function InitAlias()
-	WAVE/T w=GetAlias()
-	if(DimSize(w,0)==0)
-		SetAlias("alias=CommandPanel#Alias")
-	endif
-End
-
----------------------------------------------------------------------------------
-	History
----------------------------------------------------------------------------------
-
-static Function/WAVE AddHistory(command)
-	String command
+	InsertPoints 0, 1, w
+	w[0] = cmd
 	
-	WAVE/T history = GetTxtWave("history")
-	
-	// Erase Duplications
-	if(GetVar("histEraseDups"))
-		Extract/T/O history, history, cmpstr(history, command)
-	endif
-		
-	// Add History
-	InsertPoints 0, 1, history
-	history[0] = command
-	
-	// Ignore History
-	String histIgnore = GetStr("histIgnore")
-	
-	if(GetVar("histIgnoreDups") && cmpstr(command,history[0]) == 0)
-		DeletePoints 0,1,history	
-	elseif(GetVar("histIgnoreSpace") && StringMatch(history[0]," *"))
-		DeletePoints 0,1,history
-	elseif(ItemsInList(HistIgnore) && strlen(command))
-		Variable i,N=ItemsInList(HistIgnore)
-		for(i=0;i<N;i+=1)
-			if(StringMatch(history[0],StringFromList(i,HistIgnore)))
-				DeletePoints 0,1,history
-				break		
-			endif
-		endfor
+	// histIgnoreDups option
+	if( StringMatch(GetConfig("histIgnoreDups", "No"), "Yes") )
+		if( DimSize(w, 0) > 1 && cmpstr(w[0], w[1]) == 0 )
+			DeletePoints 0, 1, w
+		endif
 	endif
 	
-	// Size
-	Extract/T/O history,history, p < GetVar("HistSize") 
+	// histIgnoreSpace option
+	if( StringMatch(GetConfig("histIgnoreSpace", "No"), "Yes") )
+		if(StringMatch(w[0]," *"))
+			DeletePoints 0, 1, w
+		endif
+	endif
+
+	// histIgnore option
+	String ignore = GetConfig("histIgnore", ";")	
+	Variable i, N = ItemsInList(ignore)
+	for(i = 0; i < N; i += 1)
+		if(StringMatch(w[0], StringFromList(i, ignore)))
+			DeletePoints 0, 1, w
+			break		
+		endif
+	endfor
 	
-	return history
+	// histSize option
+	Extract/T/O w, w, p < Str2Num(GetConfig("histSize", "inf")) 
+
+	SetTxtWave("history", w)
 End
 
-static Function ShowHistory()
-	CommandPanel_SetBuffer( GetTxtWave("history") )
+static Function/WAVE GetHistory()
+	return GetTxtWave("history")
 End
 
-=================================================================================
-	Expansion
-=================================================================================
+static Function History()
+	CommandPanel_SetBuffer( GetHistory() )
+End
+
+//==============================================================================
+// Expansion
+//==============================================================================
 
 static Function/WAVE Expand(input)
 	String input
@@ -592,9 +565,9 @@ static Function/WAVE Expand(input)
 	return w4
 End
 
---------------------------------------------------------------------------------
-	Utilities to expand expressions
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Utilities to expand expressions
+//------------------------------------------------------------------------------
 
 // s = "123456", w = {"a", "bc", "def"},
 // -> {"1", "23", "456"}.
@@ -633,10 +606,9 @@ static Function/WAVE product(w1,w2)
 	return w
 End
 
---------------------------------------------------------------------------------
-	0. Escape Sequence 
---------------------------------------------------------------------------------
-
+//------------------------------------------------------------------------------
+// 0. Escape Sequence 
+//------------------------------------------------------------------------------
 static strconstant M ="|" // a meaningless character for masking
 
 static Function/S Mask(s)
@@ -690,9 +662,9 @@ static Function/S UnescapeBackquote(s)
 	return SelectString(StringMatch(s,"`"),s,"")
 End
 
---------------------------------------------------------------------------------
-	1, 5. Line Splitting 
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// 1, 5. Line Splitting 
+//------------------------------------------------------------------------------
 
 static Function/WAVE StrongLineSplit(input)
 	String input
@@ -717,9 +689,9 @@ static Function/WAVE LineSplitBy(delim, input, masked)
 	return cons(input[0, pos-1], LineSplitBy(delim, input[pos2, inf], masked[pos2, inf]))
 End
 
---------------------------------------------------------------------------------
-	2. Line Splitting 
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// 2. Line Splitting 
+//------------------------------------------------------------------------------
 
 static Function/S ExpandAlias(input)
 	String input
@@ -738,7 +710,7 @@ static Function/S ExpandAlias_(input) // one line
 	if(strlen(w[1])==0)
 		return input
 	endif
-	Duplicate/FREE/T GetAlias(),als
+	Duplicate/FREE/T GetAlias(""), als
 	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
 	if(null(als))
 		return input
@@ -748,37 +720,60 @@ static Function/S ExpandAlias_(input) // one line
 	endif
 End
 
-static Function SetAlias(input)
-	String input
+static Function SetAlias(name, str)
+	String name, str
+	
+	WAVE/T w = GetTxtWave("alias")
+	Extract/T/FREE w, buf, cmpstr( (w)[0, strlen(name)] ,name+"=") != 0
+	if(strlen(str))
+		InsertPoints 0, 1, buf
+		buf[0] = name + "=" + str
+	endif
+	SetTxtWave("alias", buf)
+End
 
-	WAVE/T w=PartitionWithMask(input,"^(\\s*\\w+\\s*=\\s*)") //blank,alias=,string
-	if(strlen(w[1]))
-		Duplicate/T/FREE GetAlias() alias
-		Extract/FREE/T alias,alias,!StringMatch(alias,trim(w[1])+"*")
-		InsertPoints 0,1,alias; alias[0] = trim(w[1])+w[2]
-		SetTxtWave("alias",alias)
+static Function/WAVE GetAlias(name)
+	String name
+	
+	Duplicate/FREE/T GetTxtWave("alias") w
+	if(strlen(name))
+		Extract/T/O w, w, cmpstr( (w)[0, strlen(name)] ,name+"=") == 0
+		if(DimSize(w, 0))
+			w = StringByKey(name, w[0], "=")
+		endif
+	endif
+	return w	
+End
+
+static Function Alias(expr)
+	String expr
+
+	if(GrepString(expr, "=")) // alias("a=alias") -> SetAlias("a", "alias")
+		String name = StringFromList(0, expr, "=")
+		String str = expr[strlen(name)+1, inf]
+		SetAlias(name, str)
+	else
+
+		if(strlen(expr)) // alias("a") shows the alias represented by "a"
+			WAVE/T w = GetAlias(expr)
+			Make/FREE/T/N=(DimSize(w, 0)) word = expr + "=" + w
+		else
+			WAVE/T w = GetAlias("") // alias("") shows all aliases
+			Make/FREE/T/N=(DimSize(w, 0)) word = w
+		endif
+		
+		Make/FREE/T/N=(DimSize(w, 0)) buffer, line
+		buffer = "[alias] " + w
+		line = "CommandPanel#Alias(\"" + w + "\")"
+		
+		sort word, word, buffer, line
+		CommandPanel_SetBuffer(word, buffer = buffer, line = line)
 	endif
 End
 
-static Function/WAVE GetAlias()
-	return GetTxtWave("alias")
-End
-
-static Function/WAVE GetAliasNames()
-	return map(GetAliasName,GetAlias())
-End
-
-static Function/S GetAliasName(s)
-	String s
-
-	String name
-	SplitString/E="^(\\w+)=" s,name
-	return name
-End
-
---------------------------------------------------------------------------------
-	3. Brace Expansion
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// 3. Brace Expansion
+//------------------------------------------------------------------------------
 
 static Function/WAVE ExpandBrace(input)
 	String input
@@ -801,10 +796,10 @@ End
 static Function/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
 
-	if(strlen(body)==0)
+	if(strlen(body) == 0)
 		return cast({""})
-	elseif(StringMatch(body[0],","))
-		return cons("",ExpandSeries_(body[1,inf]))
+	elseif(StringMatch(body[0], ","))
+		return cons("", ExpandSeries_(body[1,inf]))
 	elseif(!GrepString(body,"{|}|\\\\"))
 		Variable size = ItemsInList(body, ",") + StringMatch(body[strlen(body)-1], ",")
 		Make/FREE/T/N=(size) w = StringFromList(p, body, ",")
@@ -852,9 +847,9 @@ static Function/S ExpandCharacterSeries(input)
 	return SelectString(N<2,w[0]+"{"+s+"}",w[0]+s)+ExpandCharacterSeries(w[2])
 End
 
---------------------------------------------------------------------------------
-	4. Path Expansion
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// 4. Path Expansion
+//------------------------------------------------------------------------------
 
 static Function/WAVE ExpandPath(input)
 	String input
@@ -968,26 +963,28 @@ static Function/S RemoveBeginning(s,beginning)
 	return s
 End
 
---------------------------------------------------------------------------------
-	6. Complete Parenthesis
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// 6. Complete Parenthesis
+//------------------------------------------------------------------------------
 
 static Function/S CompleteParen(input)
 	String input
-	String ref = gsub(gsub(input,"(\\\\\")","",proc=Mask_),"(\"[^\"]*\")","",proc=Mask_)
-	WAVE/T w=SplitAs(input,partition(ref,"\\s(//.*)?$")) // command, comment, ""
-	WAVE/T f=partition(w[0],"^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
-	if( WhichListItem(f[1] , GetStr("userFuncs") + GetStr("builtinFuncs")) < 0 || GrepString(f[2],"^\\("))
+	String ref = gsub(gsub(input, "(\\\\\")", "", proc=Mask_), "(\"[^\"]*\")", "", proc=Mask_)
+	WAVE/T w = SplitAs(input, partition(ref, "\\s(//.*)?$")) // command, comment, ""
+	WAVE/T f = partition(w[0], "^\\s*[a-zA-Z]\\w*(#[a-zA-Z]\\w*)?\\s*") // "", function, args
+	String info = FunctionInfo(trim(f[1]))
+	if(strlen(info) == 0 || GrepString(f[2], "^\\("))
 		return input
-	elseif( WhichListItem(f[1] , GetStr("strParamFuncs") ) > 0 && !GrepString(f[2],"^ *\".*\" *$"))
-		f[2]="\""+f[2]+"\""
+	elseif(NumberByKey("N_PARAMS", info) == 1 && NumberByKey("PARAM_0_TYPE", info) == 8192 && ! GrepString(f[2], "^ *\".*\" *$"))
+		f[2] = "\"" + f[2] + "\""
 	endif
-	return sub(f[1]," *$","")+"("+f[2]+")"+w[1]
+	return sub(f[1], " *$", "") + "(" + f[2] + ")" + w[1]
 End
 
-=================================================================================
-	Completion
-=================================================================================
+
+//==============================================================================
+// Completion
+//==============================================================================
 
 static Function Complete()
 	String input = CommandPanel_GetLine(), selrow=""
@@ -1092,8 +1089,11 @@ static Function CompleteOperationName()
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
 
+	Duplicate/FREE/T GetAlias("") als
+	als = StringFromList(0, als, "=")
+	
 	Make/FREE/T/N=0 buf
-	Concatenate/T/NP {GetAliasNames(), oprs}, buf
+	Concatenate/T/NP {als, oprs}, buf
 	
 	Extract/T/FREE buf, buf, StringMatch(buf, word + "*")
 	buf = pre + buf
@@ -1117,13 +1117,13 @@ static Function CompleteFunctionName()
 	endif
 End
 
-================================================================================
-	Utilities
-================================================================================
+//==============================================================================
+// Utilities
+//==============================================================================
 
---------------------------------------------------------------------------------
-	Package utilities
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Package utilities
+//------------------------------------------------------------------------------
 
 static Function/S PackagePath()
 	NewDataFolder/O root:Packages
@@ -1221,9 +1221,36 @@ static Function SetStr(name, s)
 	target = s
 End
 
---------------------------------------------------------------------------------
-	Strings utilities
---------------------------------------------------------------------------------
+// Configuration variables
+// Use "Yes" or "No" for boolean values.
+
+static Function/S SetConfig(name, str)
+	String name, str
+	WAVE/T w = GetTxtWave("config")	
+	Extract/T/FREE w, copy, !StringMatch(w, name + ":*")
+	InsertPoints 0, 1, copy
+	copy[0] = name + ":" + str
+	SetTxtWave("config", copy) 
+End
+
+static Function/S GetConfig(name, defaultStr)
+	String name, defaultStr
+	WAVE/T w = GetTxtWave("config")	
+	Extract/T/FREE w, item, StringMatch(w, name + ":*")
+	if( DimSize(item, 0) > 0)
+		return StringByKey(name, item[0])
+	else
+		SetConfig(name,  defaultStr)
+		return defaultStr
+	endif
+End
+
+
+
+
+//------------------------------------------------------------------------------
+// Strings utilities
+//------------------------------------------------------------------------------
 
 // Corresponding to Ruby's s.partition(/expr/)
 static Function/WAVE partition(s, expr)
@@ -1402,9 +1429,9 @@ Function/S CommandPanelProtoType_Sub(s)
 	return s
 End
 
---------------------------------------------------------------------------------
-	Text waves utilities
---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Text waves utilities
+//------------------------------------------------------------------------------
 
 static Function/WAVE cast(w)
 	WAVE/T w

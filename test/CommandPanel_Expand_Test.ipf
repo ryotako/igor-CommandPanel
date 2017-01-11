@@ -1,4 +1,4 @@
-#include "CommandPanel_Expand"
+#include "CommandPanel"
 #include "MinTest"
 #pragma ModuleName=CommandPanelTest_Expand
 

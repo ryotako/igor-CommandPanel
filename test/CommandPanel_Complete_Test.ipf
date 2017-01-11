@@ -1,6 +1,5 @@
-#pragma ModuleName=CmdPnlCompleteTest
 #include "MinTest"
-#include "CommandPanel_Complete"
+#include "CommandPanel"
 
 
 static Function setup()
