@@ -570,7 +570,7 @@ End
 //------------------------------------------------------------------------------
 
 // s = "123456", w = {"a", "bc", "def"},
-// -> {"1", "23", "456"}.
+// SplitAs(s,w) -> {"1", "23", "456"}.
 static Function/WAVE SplitAs(s,w)
 	String s; WAVE/T w
 	Variable i, j, N = DimSize(w, 0)
@@ -594,7 +594,8 @@ static Function/S trim(s)
 	return ReplaceString(" ",s,"")
 End
 
-// w1 = {"a", "b"}, w2 = {"1", "2"} -> {"a1", "a2", "b1", "b2"}
+// w1 = {"a", "b"}, w2 = {"1", "2"}
+// product(w1, w2) -> {"a1", "a2", "b1", "b2"}
 static Function/WAVE product(w1,w2)
 	WAVE/T w1,w2
 	Variable n1 = DimSize(w1, 0), n2 = DimSize(w2, 0)
