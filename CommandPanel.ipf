@@ -250,7 +250,7 @@ static Function MakePanel()
 	ListBox CPBuffer, fSize = bFSize
 
 	// Activate
-	Execute/P/Q "SetVariable CPLine, win=$\"" + win + "\", activate"
+	Execute/P/Q "SetVariable/Z CPLine, win=$\"" + win + "\", activate"
 End
 
 static Function/S WinTitle()
