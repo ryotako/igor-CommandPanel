@@ -86,15 +86,28 @@ Function CommandPanel_SelectRow(n)
 	endif
 End
 
+#if IgorVersion() < 7 && defined(WINDOWS)
+// When I uses /Z flag in Windows version Igor Pro 6, buffer scrolling does not work 
+Function CommandPanel_SelectRows(w)
+	WAVE w
+	CommandPanel_SelectRows_(w)
+End
+#else
 Function CommandPanel_SelectRows(w)
 	WAVE/Z w
-	
+	CommandPanel_SelectRows_(w)
+End
+#endif
+
+Function CommandPanel_SelectRows_(w)
+	WAVE w
 	Make/FREE/N=(DimSize(GetNumWave("select"), 0)) select = 0	
 	Variable i, N = DimSize(w, 0)
 	for(i = 0; i < N; i += 1)
-		select[w[i]] = 1
+		Variable num = w[i]
+		print num
+		select[num] = 1
 	endfor
-
 	SetNumWave("select" ,select)
 End
 
