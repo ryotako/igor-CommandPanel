@@ -1259,7 +1259,45 @@ static Function/S GetConfig(name, defaultStr)
 	endif
 End
 
+static Function SaveFile(name)
+	String name	
+	
+	NewPath/C/Q CommandPanelTmpPath, DirPath()
+	if(V_Flag == 0)
+		Variable ref
+		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
+		if(V_Flag == 0)
+			wfprintf ref, "%s\n", GetTxtWave(name)
+			Close ref
+		endif	
+		KillPath CommandPanelTmpPath
+	endif
+End
 
+static Function LoadFile(name)
+	String name
+
+	NewPath/C/Q CommandPanelTmpPath, DirPath()
+	if(V_Flag == 0)
+		Variable ref
+		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
+		if(V_Flag == 0)
+			String buf = "", line
+			do
+				FReadLine ref, line
+				buf += SelectString(strlen(line), "", line)
+			while(strlen(line))
+			Close ref
+			Make/FREE/T/N=(ItemsInList(buf, "\r")) w = StringFromList(p, buf, "\r")
+			SetTxtWave(name, w)
+		endif	
+		KillPath CommandPanelTmpPath
+	endif
+End
+
+static Function/S DirPath()
+	return ParseFilePath(1, FunctionPath(""), ":", 1, 0) + "CommandPanel Waves"
+End
 
 
 //------------------------------------------------------------------------------
