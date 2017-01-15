@@ -1259,8 +1259,8 @@ static Function/S SetConfig(name, str)
 	String name, str
 	WAVE/T w = GetTxtWave("config")	
 	Extract/T/FREE w, copy, !StringMatch(w, name + ":*")
-	InsertPoints 0, 1, copy
-	copy[0] = name + ":" + str
+	InsertPoints DimSize(copy, 0), 1, copy
+	copy[inf] = name + ":" + str
 	SetTxtWave("config", copy) 
 End
 
