@@ -15,6 +15,11 @@
 //==============================================================================
 
 Function CommandPanel_New()
+	if(!DataFolderExists("root:Packages:CommandPanel"))
+		Alias("alias=CommandPanel#alias")
+		LoadFile("config")
+	endif
+
 	MakePanel()
 End
 
@@ -105,7 +110,6 @@ Function CommandPanel_SelectRows_(w)
 	Variable i, N = DimSize(w, 0)
 	for(i = 0; i < N; i += 1)
 		Variable num = w[i]
-		print num
 		select[num] = 1
 	endfor
 	SetNumWave("select" ,select)
@@ -154,7 +158,7 @@ Menu "CommandPanel", dynamic
 	"-"
 	"Settings [Interface]", /Q, CommandPanel#ConfigureInterface()
 	"Settings [Execution]", /Q, CommandPanel#ConfigureExecution()
-	"Save Settings", /Q, Abort "unimplemented"
+	"Save Settings", /Q, CommandPanel#SaveFile("config")
 End
 
 static Function/S MenuItem_ShowPanel(i)
@@ -167,6 +171,20 @@ End
 static Function MenuCommand_ShowPanel(i)
 	Variable i
 	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
+End
+
+//==============================================================================
+// Hook
+//==============================================================================
+
+static Function AfterFileOpenHook(ref, file, path, type, creator, kind)
+	Variable ref, kind; String file, path, type, creator
+	
+	if(kind == 1 || kind ==2) // packed / unpacked Igor experiment
+		if(DataFolderExists("root:Packages:CommandPanel"))
+			LoadFile("config")
+		endif	
+	endif
 End
 
 //==============================================================================
@@ -235,7 +253,7 @@ static Function MakePanel()
 	// Controls & their values
 	GetStr("CommandLine")
 	SetVariable CPLine, title = " "
-	SetVariable CPLine, value = $PackagePath()+"S_CommandLine"
+	SetVariable CPLine, value = $PackagePath()+"S_commandLine"
 
 	GetTxtWave("buffer")
 	GetNumWave("select")
@@ -434,8 +452,8 @@ static Function ExecuteLine(win)
 		Alias("alias=CommandPanel#Alias")
 	endif
 		
-	SetVar("LineChanged",0)
-	SetVar("BufferChanged",0)
+	SetVar("lineChanged",0)
+	SetVar("bufferChanged",0)
 
 	// get command
 	String input=CommandPanel_GetLine()
@@ -452,7 +470,7 @@ static Function ExecuteLine(win)
 	// history
 	if(!error)
 		SetHistory(input)
-		if( ! GetVar("LineChanged") )
+		if( ! GetVar("lineChanged") )
 			CommandPanel_SetLine("")
 		endif
 	endif
@@ -462,7 +480,7 @@ static Function ExecuteLine(win)
 	endif
 	
 	// output
-	if( GetVar("BufferChanged") )
+	if( GetVar("bufferChanged") )
 		return NaN
 	elseif( strlen(output) )
 		CommandPanel_SetBuffer(init(split(output,"\r")))
@@ -496,7 +514,6 @@ End
 //------------------------------------------------------------------------------
 // History
 //------------------------------------------------------------------------------
-
 
 static FUnction SetHistory(cmd)
 	String cmd
