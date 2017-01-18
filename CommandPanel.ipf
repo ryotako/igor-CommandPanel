@@ -128,7 +128,7 @@ Function CommandPanel_Execute(s)
 End
 
 //==============================================================================
-//	Menus
+//	Menu
 //==============================================================================
 
 Menu "CommandPanel", dynamic
@@ -1078,7 +1078,7 @@ static Function FilterBuffer()
 		Variable i, N=ItemsInList(patterns, " ")
 		for(i = 0; i < N; i += 1)
 			String pattern = StringFromList(i, patterns, " ")
-			if( GetVar("ignoreCase") )
+			if( StringMatch(GetConfig("ignoreCase", "Yes"), "Yes") )
 				pattern="(?i)" + pattern
 			endif
 			Extract/FREE/T buf,  buf,  GrepString(word, pattern)
