@@ -373,7 +373,7 @@ static Function BufferAction(s)
 			
 			PopupContextualMenu "execute;" // other contextual menu items are unimplemented
 			
-			WAVE/T buf = CommandPanel_GetBuffer()
+			WAVE/T line = GetTxtWave("line")
 			WAVE sel = CommandPanel_SelectedRows()
 			Variable i, N = DimSize(sel, 0)
 
@@ -381,7 +381,7 @@ static Function BufferAction(s)
 				case "execute":
 					String cmd = ""
 					for(i = 0; i < N; i += 1)
-						cmd += buf[sel[i]] + ";; "
+						cmd += line[sel[i]] + ";; "
 					endfor
 					cmd = RemoveEnding(cmd, ";; ")
 									
