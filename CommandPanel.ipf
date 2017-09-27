@@ -14,14 +14,55 @@
 // Public functions
 //==============================================================================
 
-Function CommandPanel_New()
-	if(!DataFolderExists("root:Packages:CommandPanel"))
-		Alias("alias=CommandPanel#alias")
-		LoadFile("config")
+Function CreateCommandPanel()	
+	//
+	// Make a CommandPanel window (singleton)
+	//
+	if(strlen(WinList("CommandPanel", ";", "WIN:64")))
+		KillWindow CommandPanel
 	endif
+	
+	WAVE panelRect = GetNumWave("CommandPanel")
+	if(DimSize(panelRect, 0) != 4)
+		GetWindow kwCmdHist wsizeOuter
+		Make/FREE/N=4 panelRect = {V_left, V_top, V_right, V_bottom}
+	endif
+	
+	NewPanel/K=1/N=CommandPanel/W=(panelRect[0], panelRect[1], panelRect[2], panelRect[3])
+	
+	String panelName = S_Name
+	ModifyPanel/W=$panelName noEdit=1
+	SetWindow $panelName, hook(base) = CommandPanel#WinProc
 
-	MakePanel()
+	//
+	// Make controls on CommandPanel
+	//
+	String cmd = "", font = "Arial"
+
+	GetStr("CommandLine")
+	SetVariable CPLine, title = " "
+	SetVariable CPLine, value = $PackagePath()+"S_commandLine"
+	SetVariable CPLine, proc = CommandPanel#LineAction
+	sprintf cmd, "SetVariable CPLine, font = $\"%s\", fsize = %d", font, 14
+	Execute cmd
+
+	GetTxtWave("buffer")
+	GetNumWave("select")
+	ListBox CPBuffer, listWave = GetNumWave("buffer")
+	ListBox CPBuffer, selWave = GetNumWave("select")
+	ListBox CPBuffer, mode = 9
+	ListBox CPBuffer, proc = CommandPanel#BufferAction
+	sprintf cmd, "ListBox CPBuffer, font = $\"%s\", fsize = %d", font, 14
+	Execute cmd
+	
+	// Resize
+	ResizeControls(panelName)
+
+	// Activate
+	sprintf cmd, "SetVariable/Z CPLine, win=$\"%s\", activate", panelName
+	Execute/P/Q cmd
 End
+
 
 Function/S CommandPanel_GetLine()
 	return GetStr("CommandLine")
@@ -131,60 +172,8 @@ End
 //	Menu
 //==============================================================================
 
-Menu "CommandPanel", dynamic
-	"New Command Panel", /Q, CommandPanel_New()
-	CommandPanel#MenuItem_ShowPanel( 0), /Q, CommandPanel#MenuCommand_ShowPanel( 0)
-	CommandPanel#MenuItem_ShowPanel( 1), /Q, CommandPanel#MenuCommand_ShowPanel( 1)
-	CommandPanel#MenuItem_ShowPanel( 2), /Q, CommandPanel#MenuCommand_ShowPanel( 2)
-	CommandPanel#MenuItem_ShowPanel( 3), /Q, CommandPanel#MenuCommand_ShowPanel( 3)
-	CommandPanel#MenuItem_ShowPanel( 4), /Q, CommandPanel#MenuCommand_ShowPanel( 4)
-	CommandPanel#MenuItem_ShowPanel( 5), /Q, CommandPanel#MenuCommand_ShowPanel( 5)
-	CommandPanel#MenuItem_ShowPanel( 6), /Q, CommandPanel#MenuCommand_ShowPanel( 6)
-	CommandPanel#MenuItem_ShowPanel( 7), /Q, CommandPanel#MenuCommand_ShowPanel( 7)
-	CommandPanel#MenuItem_ShowPanel( 8), /Q, CommandPanel#MenuCommand_ShowPanel( 8)
-	CommandPanel#MenuItem_ShowPanel( 9), /Q, CommandPanel#MenuCommand_ShowPanel( 9)
-	CommandPanel#MenuItem_ShowPanel(10), /Q, CommandPanel#MenuCommand_ShowPanel(10)
-	CommandPanel#MenuItem_ShowPanel(11), /Q, CommandPanel#MenuCommand_ShowPanel(11)
-	CommandPanel#MenuItem_ShowPanel(12), /Q, CommandPanel#MenuCommand_ShowPanel(12)
-	CommandPanel#MenuItem_ShowPanel(13), /Q, CommandPanel#MenuCommand_ShowPanel(13)
-	CommandPanel#MenuItem_ShowPanel(14), /Q, CommandPanel#MenuCommand_ShowPanel(14)
-	CommandPanel#MenuItem_ShowPanel(15), /Q, CommandPanel#MenuCommand_ShowPanel(15)
-	CommandPanel#MenuItem_ShowPanel(16), /Q, CommandPanel#MenuCommand_ShowPanel(16)
-	CommandPanel#MenuItem_ShowPanel(17), /Q, CommandPanel#MenuCommand_ShowPanel(17)
-	CommandPanel#MenuItem_ShowPanel(18), /Q, CommandPanel#MenuCommand_ShowPanel(18)
-	CommandPanel#MenuItem_ShowPanel(19), /Q, CommandPanel#MenuCommand_ShowPanel(19)
-	"-"
-	"Help for Command Panel", /Q, DisplayHelpTopic "CommandPanel"
-	"-"
-	"Settings [Interface]", /Q, CommandPanel#ConfigureInterface()
-	"Settings [Execution]", /Q, CommandPanel#ConfigureExecution()
-	"Save Settings", /Q, CommandPanel#SaveFile("config")
-End
-
-static Function/S MenuItem_ShowPanel(i)
-	Variable i
-	String win=StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
-	GetWindow/Z $win,wtitle
-	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
-End
-
-static Function MenuCommand_ShowPanel(i)
-	Variable i
-	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
-End
-
-//==============================================================================
-// Hook
-//==============================================================================
-
-static Function AfterFileOpenHook(ref, file, path, type, creator, kind)
-	Variable ref, kind; String file, path, type, creator
-	
-	if(kind == 1 || kind ==2) // packed / unpacked Igor experiment
-		if(DataFolderExists("root:Packages:CommandPanel"))
-			LoadFile("config")
-		endif	
-	endif
+Menu "Misc"
+	"CommandPanel", /Q, CreateCommandPanel()
 End
 
 //==============================================================================
@@ -192,113 +181,13 @@ End
 //==============================================================================
 
 //------------------------------------------------------------------------------
-// Configure
-//------------------------------------------------------------------------------
-static Function ConfigureInterface()
-	// Font
-	String lineFont = GetConfig("lineFont", GetDefaultFont(""))
-	String bufferFont = GetConfig("bufferFont", GetDefaultFont(""))
-	Variable lineFontSize = Str2Num( GetConfig("lineFontSize", "14") )
-	Variable bufferFontSize = Str2Num( GetConfig("bufferFontSize", "14") )
-	
-	// Window
-	Variable winWidth = Str2Num( GetConfig("winWidth", "300") )
-	Variable winHeight = Str2Num( GetConfig("winHeight", "300") )
-	String winTitle = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
-	
-	// Key
-	String swapKeys = SelectString(GetVar("swapKeys"), "No", "Yes")
-	
-	Prompt lineFont, "command-line font", popup, FontList(";") 
-	Prompt bufferFont, "buffer font", popup, FontList(";")
-	Prompt lineFontSize, "command-line font size"
-	Prompt bufferFontSize ,"buffer font size"
-	Prompt winWidth, "window width"
-	Prompt winHeight, "window height"
-	Prompt winTitle, "window title"
-	Prompt swapKeys, "swap <enter> with <shift+enter>", popup, "Yes;No"
-
-	DoPrompt/HELP="" "CommandPanel Interface Settings", lineFont, bufferFont, lineFontSize, lineFontSize, winWidth, winHeight, winTitle, swapKeys
-	
-	SetConfig("lineFont", lineFont)
-	SetConfig("bufferFont", bufferFont)
-
-	SetConfig("lineFontSize", Num2Str(lineFontSize) )
-	SetConfig("bufferFontSize", Num2Str(bufferFontSize) )
-
-	SetConfig("winWidth", Num2Str(winWidth) )
-	SetConfig("winHeight", Num2Str(winHeight) )
-	
-	SetConfig("winTitle", winTitle)
-	SetConfig("swapKeys", swapKeys)
-End
-
-//------------------------------------------------------------------------------
 // Panel building
 //------------------------------------------------------------------------------
 
-static Function MakePanel()
-	Variable width = Str2Num( GetConfig("winWidth", "300") )
-	Variable height = Str2Num( GetConfig("winHeight", "300") )
-	
-	NewPanel/K=1/W=(0, 0, width, height)/N=CommandPanel
-	String win = S_Name
-	
-	// Title
-	DoWindow/T $win, WinTitle()
-
-	// Window hook
-	SetWindow $win, hook(base) = CommandPanel#WinProc
-
-	// Controls & their values
-	GetStr("CommandLine")
-	SetVariable CPLine, title = " "
-	SetVariable CPLine, value = $PackagePath()+"S_commandLine"
-
-	GetTxtWave("buffer")
-	GetNumWave("select")
-	ListBox CPBuffer, mode = 9
-	ListBox CPBuffer, listWave = $PackagePath()+"W_buffer"
-	ListBox CPBuffer, selWave = $PackagePath()+"W_select"
-	
-	// Size
-	ResizeControls(win)
-
-	// Control actions
-	SetVariable CPLine, proc = CommandPanel#LineAction
-	ListBox   CPBuffer, proc = CommandPanel#BufferAction
-
-	// Font
-	String lFont = GetConfig("lineFont", GetDefaultFont(""))
-	String bFont = GetConfig("bufferFont", GetDefaultFont(""))
-	Execute "SetVariable CPLine, font =$\"" + lfont + "\""
-	Execute "ListBox CPBuffer, font =$\"" + bfont + "\""
-	
-	Variable lFSize = Str2Num( GetConfig("lineFontSize", "14") )
-	Variable bFSize = Str2Num( GetConfig("lineBufferSize", "14") )
-
-	SetVariable CPLine, fSize = lFSize
-	ListBox CPBuffer, fSize = bFSize
-
-	// Activate
-	Execute/P/Q "SetVariable/Z CPLine, win=$\"" + win + "\", activate"
+static Function UpdateTitle(win)
+	String win
+	DoWindow/T $win, GetDataFolder(1)
 End
-
-static Function/S WinTitle()
-	String path = "root:Packages:CommandPanel:S_winTitleEvaluated"
-	String title = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
-	String cmd
-	sprintf cmd, "String/G %s = %s", path, title
-	Execute/Z cmd
-	return GetStr("winTitleEvaluated")
-End
-
-#if Exists("PanelResolution") != 3
-static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
-	String wName
-	return 72 // that is, "pixels"
-End
-#endif
 
 // Resize
 static Function ResizeControls(win)
@@ -309,38 +198,60 @@ static Function ResizeControls(win)
 	else
 		GetWindow $win wsize		// the new window size in points (the Igor 7 way, sometimes)
 	endif
+	Variable panelWidth  = V_Right  - V_Left
+	Variable panelHeight = V_Bottom - V_Top
 
-	Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine
-	Variable height_in=V_height, height_out=height-height_in
-	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
-	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
+	Variable lineHeight = V_height
+
+	SetVariable CPLine, win=$win, pos={0, 0},          size={panelWidth, lineHeight}
+	ListBox   CPBuffer, win=$win, pos={0, lineHeight}, size={panelWidth, panelHeight - lineHeight}
 End
+
+#if Exists("PanelResolution") != 3
+static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
+	String wName
+	return 72 // that is, "pixels"
+End
+#endif
 
 //------------------------------------------------------------------------------
 // hook functions & control actions
-//------------------------------------------------------------------------------
+//------------------------------------------------------------------.------------
 
 // Window hook
 static Function WinProc(s)
 	STRUCT WMWinHookStruct &s
-	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
-		ResizeControls(s.winName)
+	
+	// CommandPanel window is a singleton:
+	// Window-copying is disable 
+	if(!StringMatch(s.winName, "CommandPanel"))
+		KillWindow $s.winName
+		return NaN
 	endif
+	
+	
+	switch(s.eventCode)
+		case 0: // activate
+		case 6: // resize
+			UpdateTitle(s.winName)
+			ResizeControls(s.winName)	
+			break
+
+		case 2: // kill
+			GetWindow $s.winName wsizeOuter
+			SetNumWave("panelRect", {V_left, V_top, V_right, V_bottom})
+			break
+			
+	endSwitch
 End
 
 // Control actions
 static Function LineAction(s)
 	STRUCT WMSetVariableAction &s
 	
-	DoWindow/T $s.win, WinTitle()
-	
 	if(s.eventCode == 2) // key input
 		Variable key = s.eventMod
-		
-		if(StringMatch(GetConfig("swapKeys", "No"), "Yes"))
-			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
-		endif
 		
 		switch(key)
 			case 0: // Enter
@@ -359,6 +270,7 @@ static Function LineAction(s)
 	endif
 	
 	if(IgorVersion() < 7)
+		UpdateTitle(s.win)
 		SetVariable/Z CPLine, win=$s.win, activate
 	endif
 End
@@ -401,7 +313,7 @@ static Function BufferAction(s)
 	endif
 	
 	if(s.eventCode > 0) // except for closing 
-		DoWindow/T $s.win, WinTitle()
+		UpdateTitle(s.win)
 		SetVariable CPLine, win=$s.win, activate
 	endif
 End
@@ -409,37 +321,6 @@ End
 //==============================================================================
 // Execution
 //==============================================================================
-
-//------------------------------------------------------------------------------
-//	Configure
-//------------------------------------------------------------------------------
-
-static Function ConfigureExecution()
-	Variable histSize = Str2Num( GetConfig("histSize", "inf") )
-	Variable histIgnoreDups = StringMatch( GetConfig("histIgnoreDups", "No"), "Yes")
-	Variable histEraseDups = StringMatch( GetConfig("histEraseDups", "No"), "Yes" )
-	Variable histControl = 1 + histIgnoreDups + 2 * histEraseDups
-	
-	String histIgnoreSpace = GetConfig("histIgnoreSpace", "No")
-	String histIgnore = GetConfig("histIgnore", ";")
-	String refocus = GetConfig("refocus", "No")
-	
-	Prompt histSize, "maximum number of commands to save on the history"
-	Prompt histControl, "unsave duplicate commands", popup, "save duplicates;unsave consecutive duplicates;unsave all duplicates"
-	Prompt histIgnoreSpace, "unsave commands beginning with space", popup, "Yes;No"
-	Prompt histIgnore, "semicolon separated list of unsaved commands (wild-card * is available)"
-	Prompt refocus, "focus the CommandPanel after execution", popup, "Yes;No"
-
-	DoPrompt/HELP="" "CommandPanel Execution Settings", histSize, histControl, histIgnoreSpace, histIgnore, refocus
-	
-
-	SetConfig("histSize", Num2Str(histSize) )
-	SetConfig("histEraseDups", SelectString(histControl == 3, "No", "Yes") )
-	SetConfig("histIgnoreDups", SelectString(histControl == 2, "No", "Yes") )
-	SetConfig("histIgnoreSpace", histIgnoreSpace)
-	SetConfig("histIgnore", histIgnore)
-	SetConfig("refocus", refocus)
-End
 
 //------------------------------------------------------------------------------
 // Execution
@@ -1251,71 +1132,6 @@ static Function SetStr(name, s)
 	endif
 	target = s
 End
-
-// Configuration variables
-// Use "Yes" or "No" for boolean values.
-
-static Function/S SetConfig(name, str)
-	String name, str
-	WAVE/T w = GetTxtWave("config")	
-	Extract/T/FREE w, copy, !StringMatch(w, name + ":*")
-	InsertPoints DimSize(copy, 0), 1, copy
-	copy[inf] = name + ":" + str
-	SetTxtWave("config", copy) 
-End
-
-static Function/S GetConfig(name, defaultStr)
-	String name, defaultStr
-	WAVE/T w = GetTxtWave("config")	
-	Extract/T/FREE w, item, StringMatch(w, name + ":*")
-	if( DimSize(item, 0) > 0)
-		return StringByKey(name, item[0])
-	else
-		SetConfig(name,  defaultStr)
-		return defaultStr
-	endif
-End
-
-static Function SaveFile(name)
-	String name	
-	
-	NewPath/C/Q CommandPanelTmpPath, DirPath()
-	if(V_Flag == 0)
-		Variable ref
-		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
-		if(V_Flag == 0)
-			wfprintf ref, "%s\n", GetTxtWave(name)
-			Close ref
-		endif	
-		KillPath CommandPanelTmpPath
-	endif
-End
-
-static Function LoadFile(name)
-	String name
-
-	NewPath/C/Q CommandPanelTmpPath, DirPath()
-	if(V_Flag == 0)
-		Variable ref
-		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
-		if(V_Flag == 0)
-			String buf = "", line
-			do
-				FReadLine ref, line
-				buf += SelectString(strlen(line), "", line)
-			while(strlen(line))
-			Close ref
-			Make/FREE/T/N=(ItemsInList(buf, "\r")) w = StringFromList(p, buf, "\r")
-			SetTxtWave(name, w)
-		endif	
-		KillPath CommandPanelTmpPath
-	endif
-End
-
-static Function/S DirPath()
-	return ParseFilePath(1, FunctionPath(""), ":", 1, 0) + "CommandPanel Waves"
-End
-
 
 //------------------------------------------------------------------------------
 // Strings utilities
