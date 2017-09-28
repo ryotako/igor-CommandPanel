@@ -33,7 +33,7 @@ Function TestCommandPanel_Interface()
 	Setup_Interface()
 	
 	// New
-	CommandPanel_New()
+	CreateCommandPanel()
 	eq_str(WinList("CommandPanel*",";","WIN:64"),"CommandPanel;")	
 	eq_text(CommandPanel_GetBuffer(), $""); WaveUpdate();
 	eq_str(CommandPanel_GetLine(), "")
