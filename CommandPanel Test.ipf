@@ -8,8 +8,9 @@
 static Function Setup_Interface()
 	KillAllCommandPanel()
 	
+	Make/FREE/T/N=0 null
 	CommandPanel_SetLine("")
-	CommandPanel_SetBuffer(CommandPanel#cast($""))
+	CommandPanel_SetBuffer(null)
 End
 
 static Function Teardown_Interface()
@@ -45,7 +46,8 @@ Function TestCommandPanel_Interface()
 	eq_str(CommandPanel_GetLine(), "test2")
 	
 	// Set/GetBuffer
-	CommandPanel_SetBuffer( CommandPanel#cast({"test"}) ); WaveUpdate();
+	Make/FREE/T w = {"test"}
+	CommandPanel_SetBuffer( w ); WaveUpdate();
 	eq_text(CommandPanel_GetBuffer(), {"test"})
 	
 	Teardown_Interface()

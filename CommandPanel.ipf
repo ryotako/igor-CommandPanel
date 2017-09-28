@@ -555,10 +555,14 @@ static Function/WAVE LineSplitBy(delim, input, masked)
 
 	Variable pos = strsearch(masked, delim, 0)
 	if(pos < 0)
-		return cast({input})
+		Make/FREE/T w = {input}
+		return w
 	endif
 	Variable pos2 = pos + strlen(delim)
-	return cons(input[0, pos-1], LineSplitBy(delim, input[pos2, inf], masked[pos2, inf]))
+	WAVE/T w = LineSplitBy(delim, input[pos2, inf], masked[pos2, inf])
+	InsertPoints 0, 1, w
+	w[0] = input[0, pos-1]
+	return w
 End
 
 //------------------------------------------------------------------------------
@@ -578,25 +582,25 @@ End
 static Function/S ExpandAlias_(input) // one line
 	String input
 
-	WAVE/T w=partition(input,"^\\s*(\\w*)") //space,alias,args
-	if(strlen(w[1])==0)
+	WAVE/T parts=partition(input,"^\\s*(\\w*)") //space,alias,args
+	if(strlen(parts[1])==0)
 		return input
 	endif
 	Duplicate/FREE/T GetAlias(""), als
-	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
+	Extract/FREE/T als,als,StringMatch(als,parts[1]+"=*")
 	if(numpnts(als) == 0)
 		return input
 	else
-		String cmd=(head(als))[strlen(w[1])+1,inf]
-		return w[0]+ExpandAlias_(cmd)+w[2]
+		String cmd=(als[0])[strlen(parts[1])+1,inf]
+		return parts[0]+ExpandAlias_(cmd)+parts[2]
 	endif
 End
 
 static Function SetAlias(name, str)
 	String name, str
 	
-	WAVE/T w = GetTxtWave("alias")
-	Extract/T/FREE w, buf, cmpstr( (w)[0, strlen(name)] ,name+"=") != 0
+	WAVE/T als = GetTxtWave("alias")
+	Extract/T/FREE als, buf, cmpstr( (als)[0, strlen(name)] ,name+"=") != 0
 	if(strlen(str))
 		InsertPoints 0, 1, buf
 		buf[0] = name + "=" + str
@@ -607,14 +611,14 @@ End
 static Function/WAVE GetAlias(name)
 	String name
 	
-	Duplicate/FREE/T GetTxtWave("alias") w
+	Duplicate/FREE/T GetTxtWave("alias") als
 	if(strlen(name))
-		Extract/T/O w, w, cmpstr( (w)[0, strlen(name)] ,name+"=") == 0
-		if(DimSize(w, 0))
-			w = StringByKey(name, w[0], "=")
+		Extract/T/O als, als, cmpstr( (als)[0, strlen(name)] ,name+"=") == 0
+		if(DimSize(als, 0))
+			als = StringByKey(name, als[0], "=")
 		endif
 	endif
-	return w	
+	return als
 End
 
 static Function Alias(expr)
@@ -656,9 +660,10 @@ End
 static Function/WAVE ExpandSeries(input)
 	String input
 
-	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
+	WAVE/T w = SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
 	if(strlen(w[1])==0)
-		return cast({input})
+		Make/FREE/T w = {input}
+		return w
 	endif
 	WAVE/T body = ExpandSeries_((w[1])[1,strlen(w[1])-2])
 	body = w[0] + body + w[2]
@@ -669,19 +674,26 @@ static Function/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
 
 	if(strlen(body) == 0)
-		return cast({""})
+		Make/FREE/T w = {""}
+		return w
 	elseif(StringMatch(body[0], ","))
-		return cons("", ExpandSeries_(body[1,inf]))
+		WAVE/T w = ExpandSeries_(body[1,inf])
+		InsertPoints 0, 1, w
+		return w
 	elseif(!GrepString(body,"{|}|\\\\"))
 		Variable size = ItemsInList(body, ",") + StringMatch(body[strlen(body)-1], ",")
 		Make/FREE/T/N=(size) w = StringFromList(p, body, ",")
 		return w
 	endif
-	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
-	if(strlen(w[2]))
-		return cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
+	WAVE/T parts=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
+	if(strlen(parts[2]))
+		WAVE/T w = ExpandSeries_( (parts[2])[1,inf] )
+		InsertPoints 0, 1, w
+		w[0] = parts[1]
+		return w
 	else
-		return cast({w[1]})
+		Make/FREE/T w = {parts[1]}
+		return w
 	endif
 End
 
@@ -725,19 +737,29 @@ End
 
 static Function/WAVE ExpandPath(input)
 	String input
-	WAVE/T w = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
-	if(strlen(w[1])==0)
-		return cast({input})
+	WAVE/T parts = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
+	if(strlen(parts[1])==0)
+		Make/FREE/T w = {input}
+		return w
 	endif
-	return product( cast({w[0]}), product(ExpandPathImpl(w[1]), ExpandPath(w[2])))
+	
+	Make/FREE/T head = {parts[0]}	
+	return product( head, product(ExpandPathImpl(parts[1]), ExpandPath(parts[2])))
 End
 
 static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	String path
 	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
-	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
+	String head = ""
+	if(DimSize(token, 0) > 0)
+		head = token[0]
+		DeletePoints 0, 1, token
+	endif
+	
+	WAVE/T buf   = ExpandPathImpl_(head,token)
 	if(numpnts(buf) == 0)
-		return cast({path})		
+		Make/FREE/T w = {path}
+		return w
 	endif
 	return buf
 End
@@ -745,37 +767,42 @@ End
 static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
 	if(numpnts(token) == 0)
-		return cast({path})
-	elseif(DimSize(token, 0)==1)
-		if(cmpstr(head(token),"**:")==0)
+		Make/FREE/T w = {path}
+		return w
+	endif
+	
+	String head = 	token[0]
+	DeletePoints DimSize(token, 0), 1, token
+	if(DimSize(token, 0)==1)
+		if(cmpstr(head,"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			fld=path+fld+":"
 			return fld
-		elseif(GrepString(head(token),":$")) // *: -> {fld1:, fld2:}
+		elseif(GrepString(head,":$")) // *: -> {fld1:, fld2:}
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head,":"))
 			fld=path+fld+":"
 			return fld
 		else // * -> {wave, var, str, fld} 
 			WAVE/T w = Objects(path)
-			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head,":"))
 			obj=path+obj
 			return obj		
 		endif
 	else
-		if(cmpstr(head(token),"**:")==0)
+		if(cmpstr(head,"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			InsertPoints 0,1,fld
 			fld=path+fld+":"
 			fld[0]=RemoveEnding(fld[0],":")
 		else
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head,":"))
 			fld=path+fld+":"
 		endif
 		Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 		for(i=0;i<N;i+=1)
-			Concatenate/NP/T {ExpandPathImpl_(fld[i],tail(token))},buf
+			Concatenate/NP/T {ExpandPathImpl_(fld[i],token)},buf
 		endfor
 		return buf
 	endif
@@ -816,7 +843,8 @@ static Function/WAVE GlobFolders_(path)
 	WAVE/T fld=Folders(path); fld=path+fld+":"
 	Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 	for(i=0;i<N;i+=1)
-		Concatenate/T/NP {cast({fld[i]}), GlobFolders_(fld[i])},buf
+		Make/FREE/T head = {fld[i]}
+		Concatenate/T/NP {head, GlobFolders_(fld[i])},buf
 	endfor
 	return buf
 End
@@ -1271,47 +1299,10 @@ Function/S CommandPanelProtoType_Sub(s)
 	return s
 End
 
-//------------------------------------------------------------------------------
-// Text waves utilities
-//------------------------------------------------------------------------------
-
-static Function/WAVE cast(w)
-	WAVE/T w
-	if(WaveExists(w))
-		Make/FREE/T/N=(DimSize(w,0)) f=w
-	else
-		Make/FREE/T/N=0 f
-	endif
-	return f
-End
-
-static Function/WAVE cons(s,w) // (:)
-	String s; WAVE/T w
-	if(numpnts(w) == 0)
-		return cast({s})
-	endif
-	Duplicate/FREE/T cast(w),f
-	InsertPoints 0,1,f
-	f[0]=s
-	return f
-End
-
-static Function/S head(w)
-	WAVE/T w
-	if(numpnts(w) == 0)
-		return ""
-	endif
-	return w[0]
-End
-
-static Function/WAVE tail(w)
-	WAVE/T w
-	if(numpnts(w) == 0)
-		return cast($"")
-	endif
-	WAVE/T f=cast(w)
-	DeletePoints 0,1,f
-	return f
+Function/WAVE CommandPanelProtoType_Split(s)
+	String s
+	Make/FREE/T/N=(ItemsInList(s)) w = StringFromList(p,s)
+	return w
 End
 
 static Function/WAVE concatMap(f,w)
@@ -1322,12 +1313,4 @@ static Function/WAVE concatMap(f,w)
 			Concatenate/T/NP {f(w[i])}, buf
 	endfor
 	return buf
-End
-
-
-Function/WAVE CommandPanelProtoType_Split(s)
-	String s
-
-	Make/FREE/T/N=(ItemsInList(s)) w = StringFromList(p,s)
-	return w
 End
