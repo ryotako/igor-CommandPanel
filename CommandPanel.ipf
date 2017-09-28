@@ -22,7 +22,7 @@ Function CreateCommandPanel()
 		KillWindow CommandPanel
 	endif
 	
-	WAVE panelRect = GetNumWave("CommandPanel")
+	WAVE panelRect = GetNumWave("PanelRect")
 	if(DimSize(panelRect, 0) != 4)
 		GetWindow kwCmdHist wsizeOuter
 		Make/FREE/N=4 panelRect = {V_left, V_top, V_right, V_bottom}
@@ -50,7 +50,7 @@ Function CreateCommandPanel()
 	GetNumWave("select")
 	ListBox CPBuffer, listWave = GetNumWave("buffer")
 	ListBox CPBuffer, selWave = GetNumWave("select")
-	ListBox CPBuffer, mode = 9
+	ListBox CPBuffer, mode = 6
 	ListBox CPBuffer, proc = CommandPanel#BufferAction
 	sprintf cmd, "ListBox CPBuffer, font = $\"%s\", fsize = %d", font, 14
 	Execute cmd
@@ -329,7 +329,7 @@ End
 static Function ExecuteLine(win)
 	String win
 
-	if(null(GetAlias("")))
+	if(numpnts(GetAlias("")) == 0)
 		Alias("alias=CommandPanel#Alias")
 	endif
 		
@@ -356,15 +356,18 @@ static Function ExecuteLine(win)
 		endif
 	endif
 	
-	if( StringMatch(GetConfig("refocus", "No"), "Yes") )
-		DoWindow/F $win
-	endif
+	// refocus
+	DoWindow/F $win
 	
 	// output
 	if( GetVar("bufferChanged") )
 		return NaN
 	elseif( strlen(output) )
-		CommandPanel_SetBuffer(init(split(output,"\r")))
+		WAVE buf = split(output,"\r")
+		if(DimSize(buf, 0) > 0)
+			DeletePoints DimSize(buf, 0)-1, 1, buf
+		endif
+		CommandPanel_SetBuffer(buf)
 	else		
 		History()
 	endif
@@ -401,41 +404,18 @@ static FUnction SetHistory(cmd)
 	
 	WAVE/T w = GetTxtWave("history")
 	
-	// histEraseDups option
-	if( StringMatch(GetConfig("histEraseDups", "No"), "Yes") )
-		Extract/T/O w, w, cmpstr(w, cmd)
-	endif
+	// Erase duplications of history
+	Extract/T/O w, w, cmpstr(w, cmd)
 
+	// Add history
 	InsertPoints 0, 1, w
 	w[0] = cmd
 	
-	// histIgnoreDups option
-	if( StringMatch(GetConfig("histIgnoreDups", "No"), "Yes") )
-		if( DimSize(w, 0) > 1 && cmpstr(w[0], w[1]) == 0 )
-			DeletePoints 0, 1, w
-		endif
+	// Ignore history beginning with a whitespace
+	if(StringMatch(w[0]," *"))
+		DeletePoints 0, 1, w
 	endif
 	
-	// histIgnoreSpace option
-	if( StringMatch(GetConfig("histIgnoreSpace", "No"), "Yes") )
-		if(StringMatch(w[0]," *"))
-			DeletePoints 0, 1, w
-		endif
-	endif
-
-	// histIgnore option
-	String ignore = GetConfig("histIgnore", ";")	
-	Variable i, N = ItemsInList(ignore)
-	for(i = 0; i < N; i += 1)
-		if(StringMatch(w[0], StringFromList(i, ignore)))
-			DeletePoints 0, 1, w
-			break		
-		endif
-	endfor
-	
-	// histSize option
-	Extract/T/O w, w, p < Str2Num(GetConfig("histSize", "inf")) 
-
 	SetTxtWave("history", w)
 End
 
@@ -624,7 +604,7 @@ static Function/S ExpandAlias_(input) // one line
 	endif
 	Duplicate/FREE/T GetAlias(""), als
 	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
-	if(null(als))
+	if(numpnts(als) == 0)
 		return input
 	else
 		String cmd=(head(als))[strlen(w[1])+1,inf]
@@ -776,7 +756,7 @@ static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	String path
 	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
 	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
-	if(null(buf))
+	if(numpnts(buf) == 0)
 		return cast({path})		
 	endif
 	return buf
@@ -784,9 +764,9 @@ End
 
 static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
-	if(null(token))
+	if(numpnts(token) == 0)
 		return cast({path})
-	elseif(length(token)==1)
+	elseif(DimSize(token, 0)==1)
 		if(cmpstr(head(token),"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			fld=path+fld+":"
@@ -813,7 +793,7 @@ static Function/WAVE ExpandPathImpl_(path,token)
 			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
 			fld=path+fld+":"
 		endif
-		Variable i,N=length(fld); Make/FREE/T/N=0 buf
+		Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 		for(i=0;i<N;i+=1)
 			Concatenate/NP/T {ExpandPathImpl_(fld[i],tail(token))},buf
 		endfor
@@ -845,7 +825,7 @@ End
 static Function/WAVE GlobFolders(path)
 	String path
 	WAVE/T w = GlobFolders_(path)
-	if(!null(w))
+	if(DimSize(w, 0) > 0)
 		w=RemoveEnding(RemoveBeginning(w,path),":")
 	endif
 	return w
@@ -854,7 +834,7 @@ End
 static Function/WAVE GlobFolders_(path)
 	String path
 	WAVE/T fld=Folders(path); fld=path+fld+":"
-	Variable i,N=length(fld); Make/FREE/T/N=0 buf
+	Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 	for(i=0;i<N;i+=1)
 		Concatenate/T/NP {cast({fld[i]}), GlobFolders_(fld[i])},buf
 	endfor
@@ -958,10 +938,7 @@ static Function FilterBuffer()
 		String patterns = RemoveFromList("", CommandPanel_GetLine(), " ")
 		Variable i, N=ItemsInList(patterns, " ")
 		for(i = 0; i < N; i += 1)
-			String pattern = StringFromList(i, patterns, " ")
-			if( StringMatch(GetConfig("ignoreCase", "Yes"), "Yes") )
-				pattern="(?i)" + pattern
-			endif
+			String pattern = "(?i)" + StringFromList(i, patterns, " ") // Ignore case
 			Extract/FREE/T buf,  buf,  GrepString(word, pattern)
 			Extract/FREE/T line, line, GrepString(word, pattern)
 			Extract/FREE/T word, word, GrepString(word, pattern)
@@ -1330,7 +1307,7 @@ End
 
 static Function/WAVE cons(s,w) // (:)
 	String s; WAVE/T w
-	if(null(w))
+	if(numpnts(w) == 0)
 		return cast({s})
 	endif
 	Duplicate/FREE/T cast(w),f
@@ -1339,16 +1316,9 @@ static Function/WAVE cons(s,w) // (:)
 	return f
 End
 
-static Function/WAVE extend(w1,w2) // (++)
-	WAVE/T w1,w2
-	Make/FREE/T/N=0 f
-	Concatenate/NP/T {cast(w1),cast(w2)},f
-	return f
-End
-
 static Function/S head(w)
 	WAVE/T w
-	if(null(w))
+	if(numpnts(w) == 0)
 		return ""
 	endif
 	return w[0]
@@ -1356,49 +1326,12 @@ End
 
 static Function/WAVE tail(w)
 	WAVE/T w
-	if(null(w))
+	if(numpnts(w) == 0)
 		return cast($"")
 	endif
 	WAVE/T f=cast(w)
 	DeletePoints 0,1,f
 	return f
-End
-
-static Function/S last(w)
-	WAVE/T w
-	if(null(w))
-		return ""
-	endif
-	return w[inf]
-End
-
-static Function/WAVE init(w)
-	WAVE/T w
-	if(null(w))
-		return cast($"")
-	endif
-	WAVE/T f=cast(w)
-	DeletePoints length(f)-1,1,f
-	return f	
-End
-
-static Function null(w)
-	WAVE/T w
-	return !length(w)
-End
-
-static Function length(w)
-	WAVE/T w
-	return numpnts(cast(w))
-End
-
-static Function/WAVE map(f,w)
-	FUNCREF CommandPanelProtoType_Id f; WAVE/T w
-	WAVE/T buf=cast(w)
-	if(length(buf))
-		buf=f(w)
-	endif
-	return buf
 End
 
 static Function/WAVE concatMap(f,w)
@@ -1411,13 +1344,8 @@ static Function/WAVE concatMap(f,w)
 	return buf
 End
 
-override Function/S CommandPanelProtoType_Id(s)
-	String s
 
-	return s
-End
-
-override Function/WAVE CommandPanelProtoType_Split(s)
+Function/WAVE CommandPanelProtoType_Split(s)
 	String s
 
 	Make/FREE/T/N=(ItemsInList(s)) w = StringFromList(p,s)
