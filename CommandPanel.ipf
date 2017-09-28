@@ -278,38 +278,18 @@ End
 static Function BufferAction(s)
 	STRUCT WMListboxAction &s
 
-	if(s.eventCode == 1) // mouse down
-		if(s.eventMod > 15) // contextual menu click
-			CommandPanel_SelectRows(GetNumWave("selectedRows"))
-			DoUpdate // necessary for multiple line selection
-			
-			PopupContextualMenu "execute;" // other contextual menu items are unimplemented
-			
-			WAVE/T line = GetTxtWave("line")
-			WAVE sel = CommandPanel_SelectedRows()
-			Variable i, N = DimSize(sel, 0)
-
-			strSwitch(S_selection)
-				case "execute":
-					String cmd = ""
-					for(i = 0; i < N; i += 1)
-						cmd += line[sel[i]] + ";; "
-					endfor
-					cmd = RemoveEnding(cmd, ";; ")
-									
-					// Execute selected rows
-					CommandPanel_SetLine(cmd)
-					ExecuteLine(s.win)
-					break
-			endSwitch
-		endif
-	endif
-
 	SetNumWave("selectedRows", CommandPanel_SelectedRows())
 	
 	if(s.eventCode == 3) // double click
 		WAVE/T w = GetTxtWave("line")
-		CommandPanel_SetLine(CommandPanel_GetLine() + w[s.row])
+		String currentLine = CommandPanel_GetLine(), newLine
+		if(GrepString(currentLine, "^ *$"))
+			newLine = currentLine + w[s.row]
+		else
+			SplitString/E="^(.*?);? *$" currentLine, newLine
+			newLine += "; " + w[s.row]
+		endif
+		CommandPanel_SetLine(newLine)			
 	endif
 	
 	if(s.eventCode > 0) // except for closing 
