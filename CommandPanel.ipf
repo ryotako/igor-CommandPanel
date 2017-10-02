@@ -22,7 +22,7 @@ Function CreateCommandPanel()
 		KillWindow CommandPanel
 	endif
 	
-	WAVE panelRect = GetNumWave("PanelRect")
+	WAVE panelRect = GetNumWave("panelRect")
 	if(DimSize(panelRect, 0) != 4)
 		GetWindow kwCmdHist wsizeOuter
 		Make/FREE/N=4 panelRect = {V_left, V_top, V_right, V_bottom}
@@ -48,7 +48,7 @@ Function CreateCommandPanel()
 
 	GetTxtWave("buffer")
 	GetNumWave("select")
-	ListBox CPBuffer, listWave = GetNumWave("buffer")
+	ListBox CPBuffer, listWave = GetTxtWave("buffer")
 	ListBox CPBuffer, selWave = GetNumWave("select")
 	ListBox CPBuffer, mode = 6
 	ListBox CPBuffer, proc = CommandPanel#BufferAction
@@ -65,14 +65,14 @@ End
 
 
 Function/S CommandPanel_GetLine()
-	return GetStr("CommandLine")
+	return GetStr("commandLine")
 End
 
 Function CommandPanel_SetLine(str)
 	String str
 
-	SetStr("CommandLine",str)
-	SetVar("LineChanged",1)
+	SetStr("commandLine",str)
+	SetVar("lineChanged",1)
 End
 
 Function/WAVE CommandPanel_GetBuffer()
@@ -81,79 +81,19 @@ Function/WAVE CommandPanel_GetBuffer()
 	return w
 End
 
-Function CommandPanel_SetBuffer(w [, word, line, buffer])
-	WAVE/T/Z w, word, line, buffer
+Function CommandPanel_SetBuffer(w)
+	WAVE/T/Z w
 
 	if(WaveExists(w))
-		SetTxtWave("line", w)
-		SetTxtWave("word", w)
-		
-		Make/FREE/T/N=(DimSize(w, 0)) w_buf = ReplaceString("\\", w, "\\\\")
-		SetTxtWave("buffer", w_buf)
+		Make/FREE/T/N=(DimSize(w, 0)) buf = ReplaceString("\\", w, "\\\\")
+		SetTxtWave("buffer", buf)
 	endif
-	if(!ParamIsDefault(word))
-		SetTxtWave("word", word)	
-	endif
-	if(!ParamIsDefault(line))
-		SetTxtWave("line", line)	
-	endif
-	if(!ParamIsDefault(buffer))
-		buffer = ReplaceString("\\", buffer, "\\\\")
-		SetTxtWave("buffer", buffer)
-	endif
+
 	SetVar("bufferChanged", 1)
 
-	Make/FREE/D/N=(DimSize(CommandPanel_GetBuffer(), 0)) select
+	Make/FREE/D/N=(DimSize(GetTxtWave("buffer"), 0)) select
 	SetNumWave("select", select)
-	CommandPanel_SelectRow(0)
-End
-
-Function CommandPanel_SelectedRow()
-	WAVE select = GetNumWave("select")
-	Variable n = WaveMin(CommandPanel_SelectedRows())
-	return n == n ? n : 0
-End
-
-Function/WAVE CommandPanel_SelectedRows()
-	WAVE select = GetNumWave("select")
-	Make/FREE/N=(DimSize(select, 0)) buf = p
-	Extract/O buf, buf, select
-	return buf
-End
-
-Function CommandPanel_SelectRow(n)
-	Variable n
-	
-	CommandPanel_SelectRows({n})
-	
-	String win = StringFromList(0, WinList("CommandPanel*", ";", "WIN:64"))
-	if(strlen(win))
-		ListBox CPBuffer, win = $win, row = n
-	endif
-End
-
-#if IgorVersion() < 7 && defined(WINDOWS)
-// When I uses /Z flag in Windows version Igor Pro 6, buffer scrolling does not work 
-Function CommandPanel_SelectRows(w)
-	WAVE w
-	CommandPanel_SelectRows_(w)
-End
-#else
-Function CommandPanel_SelectRows(w)
-	WAVE/Z w
-	CommandPanel_SelectRows_(w)
-End
-#endif
-
-Function CommandPanel_SelectRows_(w)
-	WAVE w
-	Make/FREE/N=(DimSize(GetNumWave("select"), 0)) select = 0	
-	Variable i, N = DimSize(w, 0)
-	for(i = 0; i < N; i += 1)
-		Variable num = w[i]
-		select[num] = 1
-	endfor
-	SetNumWave("select" ,select)
+	SelectRow(0)
 End
 
 Function CommandPanel_Execute(s)
@@ -278,10 +218,8 @@ End
 static Function BufferAction(s)
 	STRUCT WMListboxAction &s
 
-	SetNumWave("selectedRows", CommandPanel_SelectedRows())
-	
 	if(s.eventCode == 3) // double click
-		WAVE/T w = GetTxtWave("line")
+		WAVE/T w = GetTxtWave("buffer")
 		String currentLine = CommandPanel_GetLine(), newLine
 		if(GrepString(currentLine, "^ *$"))
 			newLine = currentLine + w[s.row]
@@ -309,7 +247,7 @@ End
 static Function ExecuteLine(win)
 	String win
 
-	if(numpnts(GetAlias("")) == 0)
+	if(numpnts(GetTxtWave("alias")) == 0)
 		Alias("alias=CommandPanel#Alias")
 	endif
 		
@@ -586,7 +524,7 @@ static Function/S ExpandAlias_(input) // one line
 	if(strlen(parts[1])==0)
 		return input
 	endif
-	Duplicate/FREE/T GetAlias(""), als
+	Duplicate/FREE/T GetTxtWave("alias"), als
 	Extract/FREE/T als,als,StringMatch(als,parts[1]+"=*")
 	if(numpnts(als) == 0)
 		return input
@@ -608,42 +546,26 @@ static Function SetAlias(name, str)
 	SetTxtWave("alias", buf)
 End
 
-static Function/WAVE GetAlias(name)
+//static Function/WAVE GetAlias(name)
 	String name
-	
 	Duplicate/FREE/T GetTxtWave("alias") als
-	if(strlen(name))
-		Extract/T/O als, als, cmpstr( (als)[0, strlen(name)] ,name+"=") == 0
-		if(DimSize(als, 0))
-			als = StringByKey(name, als[0], "=")
-		endif
-	endif
+	Extract/T/O als, als, GrepString((als)[0, strsearch(als, "=", 0)-1], name)
 	return als
 End
 
 static Function Alias(expr)
 	String expr
+	
+	String name, definition
+	SplitString/E="^(\w+) *= *(.*)$" expr, name, definition
 
-	if(GrepString(expr, "=")) // alias("a=alias") -> SetAlias("a", "alias")
-		String name = StringFromList(0, expr, "=")
-		String str = expr[strlen(name)+1, inf]
-		SetAlias(name, str)
+	if(V_Flag == 2)
+		SetAlias(name, definition)		
 	else
-
-		if(strlen(expr)) // alias("a") shows the alias represented by "a"
-			WAVE/T w = GetAlias(expr)
-			Make/FREE/T/N=(DimSize(w, 0)) word = expr + "=" + w
-		else
-			WAVE/T w = GetAlias("") // alias("") shows all aliases
-			Make/FREE/T/N=(DimSize(w, 0)) word = w
-		endif
-		
-		Make/FREE/T/N=(DimSize(w, 0)) buffer, line
-		buffer = "[alias] " + w
-		line = "CommandPanel#Alias(\"" + w + "\")"
-		
-		sort word, word, buffer, line
-		CommandPanel_SetBuffer(word, buffer = buffer, line = line)
+		Duplicate/FREE/T GetTxtWave("alias") als
+		Extract/T/O als, als, GrepString((als)[0, strsearch(als, "=", 0)-1], name)		
+		als = "alias " + als
+		CommandPanel_SetBuffer(als)
 	endif
 End
 
@@ -888,10 +810,10 @@ End
 
 static Function Complete()
 	String input = CommandPanel_GetLine(), selrow=""
-	WAVE/T line = GetTxtWave("line")
+	WAVE/T line = GetTxtWave("buffer")
 
 	if(DimSize(line, 0) > 0)
-		selrow = line[CommandPanel_SelectedRow()]
+		selrow = line[SelectedRow()]
 	endif
 
 	if(cmpstr(input, selrow, 1) == 0) // same as the selected buffer row 
@@ -927,33 +849,48 @@ End
 static Function ScrollBuffer(n)
 	Variable n
 	
-	WAVE/T line = GetTxtWave("line")
+	WAVE/T line = GetTxtWave("buffer")
 	Variable size = DimSize(line, 0)
 	if(size)
-		Variable num = mod(CommandPanel_SelectedRow() + size + n, size)
-		CommandPanel_SelectRow(num)
+		Variable num = mod(SelectedRow() + size + n, size)
+
+		SelectRow(num)
 		CommandPanel_SetLine(line[num])
+	endif
+End
+
+static Function SelectedRow()
+	Duplicate/FREE GetNumWave("select") w
+	w = w ? p : inf
+	return WaveMin(w)
+End
+
+static Function SelectRow(n)
+	Variable n
+	
+	WAVE w = GetNumWave("select")
+	w = p == n
+
+	String win = StringFromList(0, WinList("CommandPanel*", ";", "WIN:64"))
+	if(strlen(win))
+		ListBox CPBuffer, win = $win, row = n
 	endif
 End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	WAVE/T word = GetTxtWave("word")
-	Duplicate/FREE/T GetTxtWave("line") line
-	Duplicate/FREE/T GetTxtWave("buffer") buf
+	WAVE/T word = GetTxtWave("buffer")
 
-	if(DimSize(buf, 0) > 0)
+	if(DimSize(word, 0) > 0)
 		String patterns = RemoveFromList("", CommandPanel_GetLine(), " ")
 		Variable i, N=ItemsInList(patterns, " ")
 		for(i = 0; i < N; i += 1)
 			String pattern = "(?i)" + StringFromList(i, patterns, " ") // Ignore case
-			Extract/FREE/T buf,  buf,  GrepString(word, pattern)
-			Extract/FREE/T line, line, GrepString(word, pattern)
 			Extract/FREE/T word, word, GrepString(word, pattern)
 		endfor
-		CommandPanel_SetBuffer($"", buffer = buf, line = line, word = word)
-		if(DimSize(buf, 0) > 0)
-			CommandPanel_SetLine(line[0])
+		CommandPanel_SetBuffer(word)
+		if(DimSize(word, 0) > 0)
+			CommandPanel_SetLine(word[0])
 		endif
 	endif
 End
@@ -986,8 +923,8 @@ static Function CompleteOperationName()
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
 
-	Duplicate/FREE/T GetAlias("") als
-	als = StringFromList(0, als, "=")
+	Duplicate/FREE/T GetTxtWave("alias") als
+	als = (als)[0, strsearch(als, "=", 0)-1]
 	
 	Make/FREE/T/N=0 buf
 	Concatenate/T/NP {als, oprs}, buf
