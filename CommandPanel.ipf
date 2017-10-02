@@ -24,7 +24,7 @@ Function CreateCommandPanel()
 	
 	WAVE panelRect = GetNumWave("panelRect")
 	if(DimSize(panelRect, 0) != 4)
-		GetWindow kwCmdHist wsizeOuter
+		GetWindow kwCmdHist wsizeRM
 		Make/FREE/N=4 panelRect = {V_left, V_top, V_right, V_bottom}
 	endif
 	
@@ -179,7 +179,7 @@ static Function WinProc(s)
 			break
 
 		case 2: // kill
-			GetWindow $s.winName wsizeOuter
+			GetWindow $s.winName wsizeRM
 			SetNumWave("panelRect", {V_left, V_top, V_right, V_bottom})
 			break
 			
