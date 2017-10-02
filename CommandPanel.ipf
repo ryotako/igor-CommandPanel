@@ -124,11 +124,6 @@ End
 // Panel building
 //------------------------------------------------------------------------------
 
-static Function UpdateTitle(win)
-	String win
-	DoWindow/T $win, GetDataFolder(1)
-End
-
 // Resize
 static Function ResizeControls(win)
 	String win
@@ -162,6 +157,7 @@ End
 // Window hook
 static Function WinProc(s)
 	STRUCT WMWinHookStruct &s
+	DoWindow/T $s.winName, GetDataFolder(1)	// Update title
 	
 	// CommandPanel window is a singleton:
 	// Window-copying is disable 
@@ -170,11 +166,9 @@ static Function WinProc(s)
 		return NaN
 	endif
 	
-	
 	switch(s.eventCode)
 		case 0: // activate
 		case 6: // resize
-			UpdateTitle(s.winName)
 			ResizeControls(s.winName)	
 			break
 
@@ -189,6 +183,7 @@ End
 // Control actions
 static Function LineAction(s)
 	STRUCT WMSetVariableAction &s
+	DoWindow/T $s.win, GetDataFolder(1)	// Update title
 	
 	if(s.eventCode == 2) // key input
 		Variable key = s.eventMod
@@ -210,13 +205,13 @@ static Function LineAction(s)
 	endif
 	
 	if(IgorVersion() < 7)
-		UpdateTitle(s.win)
 		SetVariable/Z CPLine, win=$s.win, activate
 	endif
 End
 
 static Function BufferAction(s)
 	STRUCT WMListboxAction &s
+	DoWindow/T $s.win, GetDataFolder(1)	// Update title
 
 	if(s.eventCode == 3) // double click
 		WAVE/T w = GetTxtWave("buffer")
@@ -231,7 +226,6 @@ static Function BufferAction(s)
 	endif
 	
 	if(s.eventCode > 0) // except for closing 
-		UpdateTitle(s.win)
 		SetVariable CPLine, win=$s.win, activate
 	endif
 End
