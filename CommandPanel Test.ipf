@@ -1,6 +1,26 @@
 #include "MinTest"
 #include "CommandPanel"
 
+static Function/S CommandPanel_GetLine()
+	return CommandPanel#GetStr("commandLine")
+End
+
+static Function CommandPanel_SetLine(s)
+	String s
+	CommandPanel#SetStr("commandLine", s)
+End
+
+static Function/WAVE CommandPanel_GetBuffer()
+	Duplicate/FREE/T CommandPanel#GetTxtWave("buffer") w
+	w = ReplaceString("\\\\", w, "\\")
+	return w
+End
+
+static Function CommandPanel_SetBuffer(w)
+	WAVE/T w
+	CommandPanelOutput(w)
+End
+
 //==============================================================================
 // Interface
 //==============================================================================
