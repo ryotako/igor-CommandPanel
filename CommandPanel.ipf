@@ -1,6 +1,13 @@
 #pragma ModuleName = CommandPanel
+#pragma version = 1.0
 
 ////////////////////////////////////////////////////////////////////////////////
+// 2017-Oct-6                                                                 //
+//   version 1.0                                                              //
+//   - Remove redunbant features.                                             //
+//   - Rewrite tests with unit testing framework for Igor Pro.                //
+//   - Polish the code.                                                       //
+//                                                                            //
 // 2016-Dec-31                                                                //
 //   Revisions by Jim Prouty, Igorian Chant Software                          //
 //   Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).//
@@ -11,294 +18,117 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 //==============================================================================
-// Public functions
+// Menu & Public functions
 //==============================================================================
 
-Function CommandPanel_New()
-	if(!DataFolderExists("root:Packages:CommandPanel"))
-		Alias("alias=CommandPanel#alias")
-		LoadFile("config")
+Menu "Misc"
+	"CommandPanel", /Q, CreateCommandPanel()
+End
+
+Function CreateCommandPanel()	
+	//
+	// Make a CommandPanel window (singleton)
+	//
+	if(strlen(WinList("CommandPanel", ";", "WIN:64")))
+		KillWindow CommandPanel
 	endif
+	
+	WAVE panelRect = GetNumWave("panelRect")
+	if(DimSize(panelRect, 0) != 4)
+		GetWindow kwCmdHist wsizeRM
+		Make/FREE/N=4 panelRect = {V_left, V_top, V_right, V_bottom}
+	endif
+	
+	NewPanel/K=1/N=CommandPanel/W=(panelRect[0], panelRect[1], panelRect[2], panelRect[3])
+	
+	String panelName = S_Name
+	ModifyPanel/W=$panelName noEdit=1
+	SetWindow $panelName, hook(base) = CommandPanel#WinProc
 
-	MakePanel()
+	//
+	// Make controls on CommandPanel
+	//
+	String cmd = "", font = "Arial"
+
+	GetStr("CommandLine")
+	SetVariable CPLine, title = " "
+	SetVariable CPLine, value = $PackagePath()+"S_commandLine"
+	SetVariable CPLine, proc = CommandPanel#LineAction
+	sprintf cmd, "SetVariable CPLine, font = $\"%s\", fsize = %d", font, 14
+	Execute cmd
+
+	GetTxtWave("buffer")
+	GetNumWave("select")
+	ListBox CPBuffer, listWave = GetTxtWave("buffer")
+	ListBox CPBuffer, selWave = GetNumWave("select")
+	ListBox CPBuffer, mode = 6
+	ListBox CPBuffer, proc = CommandPanel#BufferAction
+	sprintf cmd, "ListBox CPBuffer, font = $\"%s\", fsize = %d", font, 14
+	Execute cmd
+	
+	// Resize
+	ResizeControls(panelName)
+
+	// Activate
+	sprintf cmd, "SetVariable/Z CPLine, win=$\"%s\", activate", panelName
+	Execute/P/Q cmd
 End
 
-Function/S CommandPanel_GetLine()
-	return GetStr("CommandLine")
-End
-
-Function CommandPanel_SetLine(str)
-	String str
-
-	SetStr("CommandLine",str)
-	SetVar("LineChanged",1)
-End
-
-Function/WAVE CommandPanel_GetBuffer()
-	Duplicate/FREE/T GetTxtWave("buffer") w
-	w = ReplaceString("\\\\", w, "\\")
-	return w
-End
-
-Function CommandPanel_SetBuffer(w [, word, line, buffer])
-	WAVE/T/Z w, word, line, buffer
+Function CommandPanelOutput(w)
+	WAVE/T/Z w
 
 	if(WaveExists(w))
-		SetTxtWave("line", w)
-		SetTxtWave("word", w)
-		
-		Make/FREE/T/N=(DimSize(w, 0)) w_buf = ReplaceString("\\", w, "\\\\")
-		SetTxtWave("buffer", w_buf)
+		Make/FREE/T/N=(DimSize(w, 0)) buf = ReplaceString("\\", w, "\\\\")
+		SetTxtWave("buffer", buf)
 	endif
-	if(!ParamIsDefault(word))
-		SetTxtWave("word", word)	
-	endif
-	if(!ParamIsDefault(line))
-		SetTxtWave("line", line)	
-	endif
-	if(!ParamIsDefault(buffer))
-		buffer = ReplaceString("\\", buffer, "\\\\")
-		SetTxtWave("buffer", buffer)
-	endif
+
 	SetVar("bufferChanged", 1)
-
-	Make/FREE/D/N=(DimSize(CommandPanel_GetBuffer(), 0)) select
+	Make/FREE/D/N=(DimSize(GetTxtWave("buffer"), 0)) select
 	SetNumWave("select", select)
-	CommandPanel_SelectRow(0)
+	SelectRow(0)
 End
 
-Function CommandPanel_SelectedRow()
-	WAVE select = GetNumWave("select")
-	Variable n = WaveMin(CommandPanel_SelectedRows())
-	return n == n ? n : 0
-End
-
-Function/WAVE CommandPanel_SelectedRows()
-	WAVE select = GetNumWave("select")
-	Make/FREE/N=(DimSize(select, 0)) buf = p
-	Extract/O buf, buf, select
-	return buf
-End
-
-Function CommandPanel_SelectRow(n)
-	Variable n
-	
-	CommandPanel_SelectRows({n})
-	
-	String win = StringFromList(0, WinList("CommandPanel*", ";", "WIN:64"))
-	if(strlen(win))
-		ListBox CPBuffer, win = $win, row = n
-	endif
-End
-
-#if IgorVersion() < 7 && defined(WINDOWS)
-// When I uses /Z flag in Windows version Igor Pro 6, buffer scrolling does not work 
-Function CommandPanel_SelectRows(w)
-	WAVE w
-	CommandPanel_SelectRows_(w)
-End
-#else
-Function CommandPanel_SelectRows(w)
-	WAVE/Z w
-	CommandPanel_SelectRows_(w)
-End
-#endif
-
-Function CommandPanel_SelectRows_(w)
-	WAVE w
-	Make/FREE/N=(DimSize(GetNumWave("select"), 0)) select = 0	
-	Variable i, N = DimSize(w, 0)
-	for(i = 0; i < N; i += 1)
-		Variable num = w[i]
-		select[num] = 1
-	endfor
-	SetNumWave("select" ,select)
-End
-
-Function CommandPanel_Execute(s)
+Function CommandPanelExecute(s)
 	String s
 
 	if(strlen(s))
 		Variable error; String out
-		ExpandAndExecute(s,out,error)
+		ExpandAndExecute(s, out, error)
 		return error
 	else
 		return 0
 	endif
 End
 
-//==============================================================================
-//	Menus
-//==============================================================================
+//------------------------------------------------------------------------------
+// hook functions & control actions
+//------------------------------------------------------------------.------------
 
-Menu "CommandPanel", dynamic
-	"New Command Panel", /Q, CommandPanel_New()
-	CommandPanel#MenuItem_ShowPanel( 0), /Q, CommandPanel#MenuCommand_ShowPanel( 0)
-	CommandPanel#MenuItem_ShowPanel( 1), /Q, CommandPanel#MenuCommand_ShowPanel( 1)
-	CommandPanel#MenuItem_ShowPanel( 2), /Q, CommandPanel#MenuCommand_ShowPanel( 2)
-	CommandPanel#MenuItem_ShowPanel( 3), /Q, CommandPanel#MenuCommand_ShowPanel( 3)
-	CommandPanel#MenuItem_ShowPanel( 4), /Q, CommandPanel#MenuCommand_ShowPanel( 4)
-	CommandPanel#MenuItem_ShowPanel( 5), /Q, CommandPanel#MenuCommand_ShowPanel( 5)
-	CommandPanel#MenuItem_ShowPanel( 6), /Q, CommandPanel#MenuCommand_ShowPanel( 6)
-	CommandPanel#MenuItem_ShowPanel( 7), /Q, CommandPanel#MenuCommand_ShowPanel( 7)
-	CommandPanel#MenuItem_ShowPanel( 8), /Q, CommandPanel#MenuCommand_ShowPanel( 8)
-	CommandPanel#MenuItem_ShowPanel( 9), /Q, CommandPanel#MenuCommand_ShowPanel( 9)
-	CommandPanel#MenuItem_ShowPanel(10), /Q, CommandPanel#MenuCommand_ShowPanel(10)
-	CommandPanel#MenuItem_ShowPanel(11), /Q, CommandPanel#MenuCommand_ShowPanel(11)
-	CommandPanel#MenuItem_ShowPanel(12), /Q, CommandPanel#MenuCommand_ShowPanel(12)
-	CommandPanel#MenuItem_ShowPanel(13), /Q, CommandPanel#MenuCommand_ShowPanel(13)
-	CommandPanel#MenuItem_ShowPanel(14), /Q, CommandPanel#MenuCommand_ShowPanel(14)
-	CommandPanel#MenuItem_ShowPanel(15), /Q, CommandPanel#MenuCommand_ShowPanel(15)
-	CommandPanel#MenuItem_ShowPanel(16), /Q, CommandPanel#MenuCommand_ShowPanel(16)
-	CommandPanel#MenuItem_ShowPanel(17), /Q, CommandPanel#MenuCommand_ShowPanel(17)
-	CommandPanel#MenuItem_ShowPanel(18), /Q, CommandPanel#MenuCommand_ShowPanel(18)
-	CommandPanel#MenuItem_ShowPanel(19), /Q, CommandPanel#MenuCommand_ShowPanel(19)
-	"-"
-	"Help for Command Panel", /Q, DisplayHelpTopic "CommandPanel"
-	"-"
-	"Settings [Interface]", /Q, CommandPanel#ConfigureInterface()
-	"Settings [Execution]", /Q, CommandPanel#ConfigureExecution()
-	"Save Settings", /Q, CommandPanel#SaveFile("config")
-End
-
-static Function/S MenuItem_ShowPanel(i)
-	Variable i
-	String win=StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
-	GetWindow/Z $win,wtitle
-	return SelectString(strlen(win),"","\M0"+win+" ("+S_Value+")")
-End
-
-static Function MenuCommand_ShowPanel(i)
-	Variable i
-	DoWindow/F $StringFromList(i,WinList("CommandPanel*",";","WIN:64"))
-End
-
-//==============================================================================
-// Hook
-//==============================================================================
-
-static Function AfterFileOpenHook(ref, file, path, type, creator, kind)
-	Variable ref, kind; String file, path, type, creator
+// Window hook
+static Function WinProc(s)
+	STRUCT WMWinHookStruct &s
+	DoWindow/T $s.winName, GetDataFolder(1)	// Update title
 	
-	if(kind == 1 || kind ==2) // packed / unpacked Igor experiment
-		if(DataFolderExists("root:Packages:CommandPanel"))
-			LoadFile("config")
-		endif	
+	// CommandPanel window is a singleton:
+	// Window-copying is disable 
+	if(!StringMatch(s.winName, "CommandPanel"))
+		KillWindow $s.winName
+		return NaN
 	endif
+	
+	switch(s.eventCode)
+		case 0: // activate
+		case 6: // resize
+			ResizeControls(s.winName)	
+			break
+
+		case 2: // kill
+			GetWindow $s.winName wsizeRM
+			SetNumWave("panelRect", {V_left, V_top, V_right, V_bottom})
+			break
+			
+	endSwitch
 End
-
-//==============================================================================
-// Interface
-//==============================================================================
-
-//------------------------------------------------------------------------------
-// Configure
-//------------------------------------------------------------------------------
-static Function ConfigureInterface()
-	// Font
-	String lineFont = GetConfig("lineFont", GetDefaultFont(""))
-	String bufferFont = GetConfig("bufferFont", GetDefaultFont(""))
-	Variable lineFontSize = Str2Num( GetConfig("lineFontSize", "14") )
-	Variable bufferFontSize = Str2Num( GetConfig("bufferFontSize", "14") )
-	
-	// Window
-	Variable winWidth = Str2Num( GetConfig("winWidth", "300") )
-	Variable winHeight = Str2Num( GetConfig("winHeight", "300") )
-	String winTitle = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
-	
-	// Key
-	String swapKeys = SelectString(GetVar("swapKeys"), "No", "Yes")
-	
-	Prompt lineFont, "command-line font", popup, FontList(";") 
-	Prompt bufferFont, "buffer font", popup, FontList(";")
-	Prompt lineFontSize, "command-line font size"
-	Prompt bufferFontSize ,"buffer font size"
-	Prompt winWidth, "window width"
-	Prompt winHeight, "window height"
-	Prompt winTitle, "window title"
-	Prompt swapKeys, "swap <enter> with <shift+enter>", popup, "Yes;No"
-
-	DoPrompt/HELP="" "CommandPanel Interface Settings", lineFont, bufferFont, lineFontSize, lineFontSize, winWidth, winHeight, winTitle, swapKeys
-	
-	SetConfig("lineFont", lineFont)
-	SetConfig("bufferFont", bufferFont)
-
-	SetConfig("lineFontSize", Num2Str(lineFontSize) )
-	SetConfig("bufferFontSize", Num2Str(bufferFontSize) )
-
-	SetConfig("winWidth", Num2Str(winWidth) )
-	SetConfig("winHeight", Num2Str(winHeight) )
-	
-	SetConfig("winTitle", winTitle)
-	SetConfig("swapKeys", swapKeys)
-End
-
-//------------------------------------------------------------------------------
-// Panel building
-//------------------------------------------------------------------------------
-
-static Function MakePanel()
-	Variable width = Str2Num( GetConfig("winWidth", "300") )
-	Variable height = Str2Num( GetConfig("winHeight", "300") )
-	
-	NewPanel/K=1/W=(0, 0, width, height)/N=CommandPanel
-	String win = S_Name
-	
-	// Title
-	DoWindow/T $win, WinTitle()
-
-	// Window hook
-	SetWindow $win, hook(base) = CommandPanel#WinProc
-
-	// Controls & their values
-	GetStr("CommandLine")
-	SetVariable CPLine, title = " "
-	SetVariable CPLine, value = $PackagePath()+"S_commandLine"
-
-	GetTxtWave("buffer")
-	GetNumWave("select")
-	ListBox CPBuffer, mode = 9
-	ListBox CPBuffer, listWave = $PackagePath()+"W_buffer"
-	ListBox CPBuffer, selWave = $PackagePath()+"W_select"
-	
-	// Size
-	ResizeControls(win)
-
-	// Control actions
-	SetVariable CPLine, proc = CommandPanel#LineAction
-	ListBox   CPBuffer, proc = CommandPanel#BufferAction
-
-	// Font
-	String lFont = GetConfig("lineFont", GetDefaultFont(""))
-	String bFont = GetConfig("bufferFont", GetDefaultFont(""))
-	Execute "SetVariable CPLine, font =$\"" + lfont + "\""
-	Execute "ListBox CPBuffer, font =$\"" + bfont + "\""
-	
-	Variable lFSize = Str2Num( GetConfig("lineFontSize", "14") )
-	Variable bFSize = Str2Num( GetConfig("lineBufferSize", "14") )
-
-	SetVariable CPLine, fSize = lFSize
-	ListBox CPBuffer, fSize = bFSize
-
-	// Activate
-	Execute/P/Q "SetVariable/Z CPLine, win=$\"" + win + "\", activate"
-End
-
-static Function/S WinTitle()
-	String path = "root:Packages:CommandPanel:S_winTitleEvaluated"
-	String title = GetConfig("winTitle", "\"[\" + IgorInfo(1) + \"] \" + GetDataFolder(1)")
-	String cmd
-	sprintf cmd, "String/G %s = %s", path, title
-	Execute/Z cmd
-	return GetStr("winTitleEvaluated")
-End
-
-#if Exists("PanelResolution") != 3
-static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
-	String wName
-	return 72 // that is, "pixels"
-End
-#endif
 
 // Resize
 static Function ResizeControls(win)
@@ -309,45 +139,32 @@ static Function ResizeControls(win)
 	else
 		GetWindow $win wsize		// the new window size in points (the Igor 7 way, sometimes)
 	endif
+	Variable panelWidth  = V_Right  - V_Left
+	Variable panelHeight = V_Bottom - V_Top
 
-	Variable width=V_Right-V_Left, height=V_Bottom-V_Top
 	ControlInfo/W=$win CPLine
-	Variable height_in=V_height, height_out=height-height_in
-	SetVariable CPLine, win=$win, pos={0, 0},         size={width, height_in}
-	ListBox   CPBuffer, win=$win, pos={0, height_in}, size={width, height_out}
+	Variable lineHeight = V_height
+
+	SetVariable CPLine, win=$win, pos={0, 0},          size={panelWidth, lineHeight}
+	ListBox   CPBuffer, win=$win, pos={0, lineHeight}, size={panelWidth, panelHeight - lineHeight}
 End
 
-//------------------------------------------------------------------------------
-// hook functions & control actions
-//------------------------------------------------------------------------------
-
-// Window hook
-static Function WinProc(s)
-	STRUCT WMWinHookStruct &s
-	if(  s.eventCode == 0 || s.eventCode == 6 ) // activate & resize
-		ResizeControls(s.winName)
-	endif
+#if Exists("PanelResolution") != 3
+static Function PanelResolution(wName) // For compatibility between Igor 6 & 7
+	String wName
+	return 72 // that is, "pixels"
 End
+#endif
 
 // Control actions
 static Function LineAction(s)
 	STRUCT WMSetVariableAction &s
-	
-	DoWindow/T $s.win, WinTitle()
+	DoWindow/T $s.win, GetDataFolder(1)	// Update title
 	
 	if(s.eventCode == 2) // key input
-		Variable key = s.eventMod
-		
-		if(StringMatch(GetConfig("swapKeys", "No"), "Yes"))
-			key = (key == 0) ? 2 : ( key == 2 ) ? 0 : key
-		endif
-		
-		switch(key)
+		switch(s.eventMod)
 			case 0: // Enter
-				ExecuteLine(s.win)
-				if(IgorVersion() < 7)
-					SetVariable/Z CPLine, win=$s.win, activate
-				endif
+				AcceptLine()
 				break
 			case 2: // Shift + Enter
 				Complete()
@@ -357,51 +174,25 @@ static Function LineAction(s)
 				break
 		endswitch
 	endif
-	
-	if(IgorVersion() < 7)
-		SetVariable/Z CPLine, win=$s.win, activate
-	endif
 End
 
 static Function BufferAction(s)
 	STRUCT WMListboxAction &s
+	DoWindow/T $s.win, GetDataFolder(1)	// Update title
 
-	if(s.eventCode == 1) // mouse down
-		if(s.eventMod > 15) // contextual menu click
-			CommandPanel_SelectRows(GetNumWave("selectedRows"))
-			DoUpdate // necessary for multiple line selection
-			
-			PopupContextualMenu "execute;" // other contextual menu items are unimplemented
-			
-			WAVE/T buf = CommandPanel_GetBuffer()
-			WAVE sel = CommandPanel_SelectedRows()
-			Variable i, N = DimSize(sel, 0)
-
-			strSwitch(S_selection)
-				case "execute":
-					String cmd = ""
-					for(i = 0; i < N; i += 1)
-						cmd += buf[sel[i]] + ";; "
-					endfor
-					cmd = RemoveEnding(cmd, ";; ")
-									
-					// Execute selected rows
-					CommandPanel_SetLine(cmd)
-					ExecuteLine(s.win)
-					break
-			endSwitch
-		endif
-	endif
-
-	SetNumWave("selectedRows", CommandPanel_SelectedRows())
-	
 	if(s.eventCode == 3) // double click
-		WAVE/T w = GetTxtWave("line")
-		CommandPanel_SetLine(CommandPanel_GetLine() + w[s.row])
+		WAVE/T w = GetTxtWave("buffer")
+		String newLine, currentLine = GetStr("commandLine")
+		if(GrepString(currentLine, "^ *$"))
+			newLine = currentLine + w[s.row]
+		else
+			SplitString/E="^(.*?);? *$" currentLine, newLine
+			newLine += "; " + w[s.row]
+		endif
+		SetStr("commandLine", newLine)			
 	endif
 	
 	if(s.eventCode > 0) // except for closing 
-		DoWindow/T $s.win, WinTitle()
 		SetVariable CPLine, win=$s.win, activate
 	endif
 End
@@ -411,54 +202,21 @@ End
 //==============================================================================
 
 //------------------------------------------------------------------------------
-//	Configure
-//------------------------------------------------------------------------------
-
-static Function ConfigureExecution()
-	Variable histSize = Str2Num( GetConfig("histSize", "inf") )
-	Variable histIgnoreDups = StringMatch( GetConfig("histIgnoreDups", "No"), "Yes")
-	Variable histEraseDups = StringMatch( GetConfig("histEraseDups", "No"), "Yes" )
-	Variable histControl = 1 + histIgnoreDups + 2 * histEraseDups
-	
-	String histIgnoreSpace = GetConfig("histIgnoreSpace", "No")
-	String histIgnore = GetConfig("histIgnore", ";")
-	String refocus = GetConfig("refocus", "No")
-	
-	Prompt histSize, "maximum number of commands to save on the history"
-	Prompt histControl, "unsave duplicate commands", popup, "save duplicates;unsave consecutive duplicates;unsave all duplicates"
-	Prompt histIgnoreSpace, "unsave commands beginning with space", popup, "Yes;No"
-	Prompt histIgnore, "semicolon separated list of unsaved commands (wild-card * is available)"
-	Prompt refocus, "focus the CommandPanel after execution", popup, "Yes;No"
-
-	DoPrompt/HELP="" "CommandPanel Execution Settings", histSize, histControl, histIgnoreSpace, histIgnore, refocus
-	
-
-	SetConfig("histSize", Num2Str(histSize) )
-	SetConfig("histEraseDups", SelectString(histControl == 3, "No", "Yes") )
-	SetConfig("histIgnoreDups", SelectString(histControl == 2, "No", "Yes") )
-	SetConfig("histIgnoreSpace", histIgnoreSpace)
-	SetConfig("histIgnore", histIgnore)
-	SetConfig("refocus", refocus)
-End
-
-//------------------------------------------------------------------------------
 // Execution
 //------------------------------------------------------------------------------
 
-static Function ExecuteLine(win)
-	String win
+static Function AcceptLine()
 
-	if(null(GetAlias("")))
+	if(numpnts(GetTxtWave("alias")) == 0)
 		Alias("alias=CommandPanel#Alias")
 	endif
 		
-	SetVar("lineChanged",0)
 	SetVar("bufferChanged",0)
 
 	// get command
-	String input=CommandPanel_GetLine()
+	String input = GetStr("commandLine")
 	if(strlen(input)==0)
-		History()
+		CommandPanelOutput(GetHistory())
 		return NaN
 	endif
 
@@ -470,22 +228,20 @@ static Function ExecuteLine(win)
 	// history
 	if(!error)
 		SetHistory(input)
-		if( ! GetVar("lineChanged") )
-			CommandPanel_SetLine("")
-		endif
+		SetStr("commandLine", "")
 	endif
-	
-	if( StringMatch(GetConfig("refocus", "No"), "Yes") )
-		DoWindow/F $win
-	endif
-	
+		
 	// output
 	if( GetVar("bufferChanged") )
 		return NaN
 	elseif( strlen(output) )
-		CommandPanel_SetBuffer(init(split(output,"\r")))
+		WAVE buf = split(output,"\r")
+		if(DimSize(buf, 0) > 0)
+			DeletePoints DimSize(buf, 0)-1, 1, buf
+		endif
+		CommandPanelOutput(buf)
 	else		
-		History()
+		CommandPanelOutput(GetHistory())
 	endif
 	
 End
@@ -520,50 +276,23 @@ static FUnction SetHistory(cmd)
 	
 	WAVE/T w = GetTxtWave("history")
 	
-	// histEraseDups option
-	if( StringMatch(GetConfig("histEraseDups", "No"), "Yes") )
-		Extract/T/O w, w, cmpstr(w, cmd)
-	endif
+	// Erase duplications of history
+	Extract/T/O w, w, cmpstr(w, cmd)
 
+	// Add history
 	InsertPoints 0, 1, w
 	w[0] = cmd
 	
-	// histIgnoreDups option
-	if( StringMatch(GetConfig("histIgnoreDups", "No"), "Yes") )
-		if( DimSize(w, 0) > 1 && cmpstr(w[0], w[1]) == 0 )
-			DeletePoints 0, 1, w
-		endif
+	// Ignore history beginning with a whitespace
+	if(StringMatch(w[0]," *"))
+		DeletePoints 0, 1, w
 	endif
 	
-	// histIgnoreSpace option
-	if( StringMatch(GetConfig("histIgnoreSpace", "No"), "Yes") )
-		if(StringMatch(w[0]," *"))
-			DeletePoints 0, 1, w
-		endif
-	endif
-
-	// histIgnore option
-	String ignore = GetConfig("histIgnore", ";")	
-	Variable i, N = ItemsInList(ignore)
-	for(i = 0; i < N; i += 1)
-		if(StringMatch(w[0], StringFromList(i, ignore)))
-			DeletePoints 0, 1, w
-			break		
-		endif
-	endfor
-	
-	// histSize option
-	Extract/T/O w, w, p < Str2Num(GetConfig("histSize", "inf")) 
-
 	SetTxtWave("history", w)
 End
 
 static Function/WAVE GetHistory()
 	return GetTxtWave("history")
-End
-
-static Function History()
-	CommandPanel_SetBuffer( GetHistory() )
 End
 
 //==============================================================================
@@ -714,10 +443,14 @@ static Function/WAVE LineSplitBy(delim, input, masked)
 
 	Variable pos = strsearch(masked, delim, 0)
 	if(pos < 0)
-		return cast({input})
+		Make/FREE/T w = {input}
+		return w
 	endif
 	Variable pos2 = pos + strlen(delim)
-	return cons(input[0, pos-1], LineSplitBy(delim, input[pos2, inf], masked[pos2, inf]))
+	WAVE/T w = LineSplitBy(delim, input[pos2, inf], masked[pos2, inf])
+	InsertPoints 0, 1, w
+	w[0] = input[0, pos-1]
+	return w
 End
 
 //------------------------------------------------------------------------------
@@ -737,25 +470,25 @@ End
 static Function/S ExpandAlias_(input) // one line
 	String input
 
-	WAVE/T w=partition(input,"^\\s*(\\w*)") //space,alias,args
-	if(strlen(w[1])==0)
+	WAVE/T parts=partition(input,"^\\s*(\\w*)") //space,alias,args
+	if(strlen(parts[1])==0)
 		return input
 	endif
-	Duplicate/FREE/T GetAlias(""), als
-	Extract/FREE/T als,als,StringMatch(als,w[1]+"=*")
-	if(null(als))
+	Duplicate/FREE/T GetTxtWave("alias"), als
+	Extract/FREE/T als,als,StringMatch(als,parts[1]+"=*")
+	if(numpnts(als) == 0)
 		return input
 	else
-		String cmd=(head(als))[strlen(w[1])+1,inf]
-		return w[0]+ExpandAlias_(cmd)+w[2]
+		String cmd=(als[0])[strlen(parts[1])+1,inf]
+		return parts[0]+ExpandAlias_(cmd)+parts[2]
 	endif
 End
 
 static Function SetAlias(name, str)
 	String name, str
 	
-	WAVE/T w = GetTxtWave("alias")
-	Extract/T/FREE w, buf, cmpstr( (w)[0, strlen(name)] ,name+"=") != 0
+	WAVE/T als = GetTxtWave("alias")
+	Extract/T/FREE als, buf, cmpstr( (als)[0, strlen(name)] ,name+"=") != 0
 	if(strlen(str))
 		InsertPoints 0, 1, buf
 		buf[0] = name + "=" + str
@@ -763,42 +496,26 @@ static Function SetAlias(name, str)
 	SetTxtWave("alias", buf)
 End
 
-static Function/WAVE GetAlias(name)
+//static Function/WAVE GetAlias(name)
 	String name
-	
-	Duplicate/FREE/T GetTxtWave("alias") w
-	if(strlen(name))
-		Extract/T/O w, w, cmpstr( (w)[0, strlen(name)] ,name+"=") == 0
-		if(DimSize(w, 0))
-			w = StringByKey(name, w[0], "=")
-		endif
-	endif
-	return w	
+	Duplicate/FREE/T GetTxtWave("alias") als
+	Extract/T/O als, als, GrepString((als)[0, strsearch(als, "=", 0)-1], name)
+	return als
 End
 
 static Function Alias(expr)
 	String expr
+	
+	String name, definition
+	SplitString/E="^(\w+) *= *(.*)$" expr, name, definition
 
-	if(GrepString(expr, "=")) // alias("a=alias") -> SetAlias("a", "alias")
-		String name = StringFromList(0, expr, "=")
-		String str = expr[strlen(name)+1, inf]
-		SetAlias(name, str)
+	if(V_Flag == 2)
+		SetAlias(name, definition)		
 	else
-
-		if(strlen(expr)) // alias("a") shows the alias represented by "a"
-			WAVE/T w = GetAlias(expr)
-			Make/FREE/T/N=(DimSize(w, 0)) word = expr + "=" + w
-		else
-			WAVE/T w = GetAlias("") // alias("") shows all aliases
-			Make/FREE/T/N=(DimSize(w, 0)) word = w
-		endif
-		
-		Make/FREE/T/N=(DimSize(w, 0)) buffer, line
-		buffer = "[alias] " + w
-		line = "CommandPanel#Alias(\"" + w + "\")"
-		
-		sort word, word, buffer, line
-		CommandPanel_SetBuffer(word, buffer = buffer, line = line)
+		Duplicate/FREE/T GetTxtWave("alias") als
+		Extract/T/O als, als, GrepString((als)[0, strsearch(als, "=", 0)-1], name)		
+		als = "alias " + als
+		CommandPanelOutput(als)
 	endif
 End
 
@@ -815,9 +532,10 @@ End
 static Function/WAVE ExpandSeries(input)
 	String input
 
-	WAVE/T w=SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
+	WAVE/T w = SplitAs(input,partition(mask(input),trim("( { ([^{}] | {[^{}]*} | (?1))* , (?2)* } )")))
 	if(strlen(w[1])==0)
-		return cast({input})
+		Make/FREE/T w = {input}
+		return w
 	endif
 	WAVE/T body = ExpandSeries_((w[1])[1,strlen(w[1])-2])
 	body = w[0] + body + w[2]
@@ -828,19 +546,26 @@ static Function/WAVE ExpandSeries_(body) // expand inside of {} once
 	String body
 
 	if(strlen(body) == 0)
-		return cast({""})
+		Make/FREE/T w = {""}
+		return w
 	elseif(StringMatch(body[0], ","))
-		return cons("", ExpandSeries_(body[1,inf]))
+		WAVE/T w = ExpandSeries_(body[1,inf])
+		InsertPoints 0, 1, w
+		return w
 	elseif(!GrepString(body,"{|}|\\\\"))
 		Variable size = ItemsInList(body, ",") + StringMatch(body[strlen(body)-1], ",")
 		Make/FREE/T/N=(size) w = StringFromList(p, body, ",")
 		return w
 	endif
-	WAVE/T w=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
-	if(strlen(w[2]))
-		return cons(w[1],ExpandSeries_( (w[2])[1,inf] ))
+	WAVE/T parts=PartitionWithMask(body,trim("^( ( [^{},] | ( { ([^{}]*|(?3)) } ) )* )"))
+	if(strlen(parts[2]))
+		WAVE/T w = ExpandSeries_( (parts[2])[1,inf] )
+		InsertPoints 0, 1, w
+		w[0] = parts[1]
+		return w
 	else
-		return cast({w[1]})
+		Make/FREE/T w = {parts[1]}
+		return w
 	endif
 End
 
@@ -884,57 +609,72 @@ End
 
 static Function/WAVE ExpandPath(input)
 	String input
-	WAVE/T w = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
-	if(strlen(w[1])==0)
-		return cast({input})
+	WAVE/T parts = PartitionWithMask(input,trim("(?<!\\w)(root)?(:[a-zA-Z\\*][\\w\\*]* | :'[^:;'\"]+')+ :?"))
+	if(strlen(parts[1])==0)
+		Make/FREE/T w = {input}
+		return w
 	endif
-	return product( cast({w[0]}), product(ExpandPathImpl(w[1]), ExpandPath(w[2])))
+	
+	Make/FREE/T head = {parts[0]}	
+	return product( head, product(ExpandPathImpl(parts[1]), ExpandPath(parts[2])))
 End
 
 static Function/WAVE ExpandPathImpl(path) // implement of path expansion
 	String path
 	WAVE/T token = SplitAs(path,scan(mask(path),":|[^:]+:?"))
-	WAVE/T buf   = ExpandPathImpl_(head(token),tail(token))
-	if(null(buf))
-		return cast({path})		
+	String head = ""
+	if(DimSize(token, 0) > 0)
+		head = token[0]
+		DeletePoints 0, 1, token
+	endif
+	
+	WAVE/T buf   = ExpandPathImpl_(head,token)
+	if(numpnts(buf) == 0)
+		Make/FREE/T w = {path}
+		return w
 	endif
 	return buf
 End
 
 static Function/WAVE ExpandPathImpl_(path,token)
 	String path; WAVE/T token
-	if(null(token))
-		return cast({path})
-	elseif(length(token)==1)
-		if(cmpstr(head(token),"**:")==0)
+	if(numpnts(token) == 0)
+		Make/FREE/T w = {path}
+		return w
+	endif
+	
+	String head = 	token[0]
+	DeletePoints DimSize(token, 0), 1, token
+	if(DimSize(token, 0)==1)
+		if(cmpstr(head,"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			fld=path+fld+":"
 			return fld
-		elseif(GrepString(head(token),":$")) // *: -> {fld1:, fld2:}
+		elseif(GrepString(head,":$")) // *: -> {fld1:, fld2:}
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head,":"))
 			fld=path+fld+":"
 			return fld
 		else // * -> {wave, var, str, fld} 
 			WAVE/T w = Objects(path)
-			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,obj,PathMatch(w,RemoveEnding(head,":"))
 			obj=path+obj
 			return obj		
 		endif
 	else
-		if(cmpstr(head(token),"**:")==0)
+		if(cmpstr(head,"**:")==0)
 			WAVE/T fld = GlobFolders(path)
 			InsertPoints 0,1,fld
 			fld=path+fld+":"
 			fld[0]=RemoveEnding(fld[0],":")
 		else
 			WAVE/T w = Folders(path)
-			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head(token),":"))
+			Extract/T/FREE w,fld,PathMatch(w,RemoveEnding(head,":"))
 			fld=path+fld+":"
 		endif
-		Variable i,N=length(fld); Make/FREE/T/N=0 buf
+		Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 		for(i=0;i<N;i+=1)
-			Concatenate/NP/T {ExpandPathImpl_(fld[i],tail(token))},buf
+			Concatenate/NP/T {ExpandPathImpl_(fld[i],token)},buf
 		endfor
 		return buf
 	endif
@@ -947,16 +687,16 @@ End
 
 static Function/WAVE Folders(path)
 	String path
-	Make/T/FREE/N=(CountObj(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	Make/T/FREE/N=(CountObject(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
 	return w
 End
 
 static Function/WAVE Objects(path)
 	String path
-	Make/T/FREE/N=(CountObj(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
-	Make/T/FREE/N=(CountObj(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
-	Make/T/FREE/N=(CountObj(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
-	Make/T/FREE/N=(CountObj(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	Make/T/FREE/N=(CountObject(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
+	Make/T/FREE/N=(CountObject(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
+	Make/T/FREE/N=(CountObject(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
+	Make/T/FREE/N=(CountObject(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
 	Make/FREE/T/N=0 f; Concatenate/T/NP {fld,wav,var,str},f
 	return f
 End
@@ -964,8 +704,8 @@ End
 static Function/WAVE GlobFolders(path)
 	String path
 	WAVE/T w = GlobFolders_(path)
-	if(!null(w))
-		w=RemoveEnding(RemoveBeginning(w,path),":")
+	if(DimSize(w, 0) > 0)
+		w=RemoveEnding((w)[strlen(path), inf], ":")
 	endif
 	return w
 End
@@ -973,25 +713,20 @@ End
 static Function/WAVE GlobFolders_(path)
 	String path
 	WAVE/T fld=Folders(path); fld=path+fld+":"
-	Variable i,N=length(fld); Make/FREE/T/N=0 buf
+	Variable i,N=DimSize(fld, 0); Make/FREE/T/N=0 buf
 	for(i=0;i<N;i+=1)
-		Concatenate/T/NP {cast({fld[i]}), GlobFolders_(fld[i])},buf
+		Make/FREE/T head = {fld[i]}
+		Concatenate/T/NP {head, GlobFolders_(fld[i])},buf
 	endfor
 	return buf
 End
 
-static Function CountObj(path,type)
+// Just a wrapper of CountObjects:
+//	This function does not return NaN. 
+static Function CountObject(path,type)
 	String path; Variable type
 	Variable v=CountObjects(path,type)
 	return numtype(v) ? 0 : v
-End
-
-static Function/S RemoveBeginning(s,beginning)
-	String s,beginning
-	if(strlen(beginning) && cmpstr(s[0,strlen(beginning)-1],beginning)==0)
-		return s[strlen(beginning),inf]
-	endif
-	return s
 End
 
 //------------------------------------------------------------------------------
@@ -1018,11 +753,11 @@ End
 //==============================================================================
 
 static Function Complete()
-	String input = CommandPanel_GetLine(), selrow=""
-	WAVE/T line = GetTxtWave("line")
+	String input = GetStr("commandLine"), selrow=""
+	WAVE/T line = GetTxtWave("buffer")
 
 	if(DimSize(line, 0) > 0)
-		selrow = line[CommandPanel_SelectedRow()]
+		selrow = line[SelectedRow()]
 	endif
 
 	if(cmpstr(input, selrow, 1) == 0) // same as the selected buffer row 
@@ -1058,70 +793,82 @@ End
 static Function ScrollBuffer(n)
 	Variable n
 	
-	WAVE/T line = GetTxtWave("line")
+	WAVE/T line = GetTxtWave("buffer")
 	Variable size = DimSize(line, 0)
 	if(size)
-		Variable num = mod(CommandPanel_SelectedRow() + size + n, size)
-		CommandPanel_SelectRow(num)
-		CommandPanel_SetLine(line[num])
+		Variable num = mod(SelectedRow() + size + n, size)
+
+		SelectRow(num)
+		SetStr("commandLine", line[num])
+	endif
+End
+
+static Function SelectedRow()
+	Duplicate/FREE GetNumWave("select") w
+	w = w ? p : inf
+	return WaveMin(w)
+End
+
+static Function SelectRow(n)
+	Variable n
+	
+	WAVE w = GetNumWave("select")
+	w = p == n
+
+	String win = StringFromList(0, WinList("CommandPanel*", ";", "WIN:64"))
+	if(strlen(win))
+		ListBox CPBuffer, win = $win, row = n
 	endif
 End
 
 // for a string beginning with whitespace 
 static Function FilterBuffer()
-	WAVE/T word = GetTxtWave("word")
-	Duplicate/FREE/T GetTxtWave("line") line
-	Duplicate/FREE/T GetTxtWave("buffer") buf
+	WAVE/T word = GetTxtWave("buffer")
 
-	if(DimSize(buf, 0) > 0)
-		String patterns = RemoveFromList("", CommandPanel_GetLine(), " ")
+	if(DimSize(word, 0) > 0)
+		String patterns = RemoveFromList("", GetStr("commandLine"), " ")
 		Variable i, N=ItemsInList(patterns, " ")
 		for(i = 0; i < N; i += 1)
-			String pattern = StringFromList(i, patterns, " ")
-			if( GetVar("ignoreCase") )
-				pattern="(?i)" + pattern
-			endif
-			Extract/FREE/T buf,  buf,  GrepString(word, pattern)
-			Extract/FREE/T line, line, GrepString(word, pattern)
+			String pattern = "(?i)" + StringFromList(i, patterns, " ") // Ignore case
 			Extract/FREE/T word, word, GrepString(word, pattern)
 		endfor
-		CommandPanel_SetBuffer($"", buffer = buf, line = line, word = word)
-		if(DimSize(buf, 0) > 0)
-			CommandPanel_SetLine(line[0])
+		CommandPanelOutput(word)
+		if(DimSize(word, 0) > 0)
+			SetStr("commandLine", word[0])
 		endif
 	endif
 End
 
 // for a pathname
 static Function CompletePathname()
-	String line=CommandPanel_GetLine(), cmd, path, name, s
+	String line=GetStr("commandLine"), cmd, path, name, s
 	SplitString/E="^(.*?)(((?<!\w)root)?:(([a-zA-Z_]\w*)?:)*)([a-zA-Z_]\w*|\'[^;:\"\']*)?$" line,cmd,path,s,s,s,name
 	if(DataFolderExists(path))
-		Make/FREE/T/N=(CountObjects(path, 1)) wav = PossiblyQuoteName(GetIndexedObjName(path, 1, p))		
-		Make/FREE/T/N=(CountObjects(path, 2)) var = PossiblyQuoteName(GetIndexedObjName(path, 2, p))		
-		Make/FREE/T/N=(CountObjects(path, 3)) str = PossiblyQuoteName(GetIndexedObjName(path, 3, p))		
-		Make/FREE/T/N=(CountObjects(path, 4)) fld = PossiblyQuoteName(GetIndexedObjName(path, 4, p))
+		Make/FREE/T/N=(CountObject(path, 1)) wav = PossiblyQuoteName(GetIndexedObjName(path, 1, p))		
+		Make/FREE/T/N=(CountObject(path, 2)) var = PossiblyQuoteName(GetIndexedObjName(path, 2, p))		
+		Make/FREE/T/N=(CountObject(path, 3)) str = PossiblyQuoteName(GetIndexedObjName(path, 3, p))		
+		Make/FREE/T/N=(CountObject(path, 4)) fld = PossiblyQuoteName(GetIndexedObjName(path, 4, p))
 		Make/FREE/T/N=0 obj
 		Concatenate/T/NP {wav, var, str, fld}, obj
 		Extract/T/FREE obj,obj,StringMatch(obj, name + "*")
 		Make/T/FREE/N=(DimSize(obj, 0)) buf = cmd + path + obj
 		if(DimSize(buf, 0))
-			CommandPanel_SetBuffer(buf)
-			CommandPanel_SetLine(buf[0])
+			CommandPanelOutput(buf)
+			SetStr("commandLine", buf[0])
 		endif
 	endif
 End
 
 // for the first word
 static Function CompleteOperationName()
-	String line = CommandPanel_GetLine(), pre, word
+	String line = GetStr("commandLine"), pre, word
 	SplitString/E="(.*;)? *([A-Za-z]\\w*)$" line, pre, word
 	
 	String list = FunctionList(word + "*", ";", "KIND:2") + OperationList(word + "*", ";", "all")
 	Make/FREE/T/N=(ItemsInList(list)) oprs = StringFromList(p, list)
 
-	Duplicate/FREE/T GetAlias("") als
-	als = StringFromList(0, als, "=")
+	Duplicate/FREE/T GetTxtWave("alias") als
+	als = (als)[0, strsearch(als, "=", 0)-1]
 	
 	Make/FREE/T/N=0 buf
 	Concatenate/T/NP {als, oprs}, buf
@@ -1129,22 +876,22 @@ static Function CompleteOperationName()
 	Extract/T/FREE buf, buf, StringMatch(buf, word + "*")
 	buf = pre + buf
 	if(DimSize(buf, 0))
-		CommandPanel_SetBuffer(buf)
-		CommandPanel_SetLine(buf[0])	
+		CommandPanelOutput(buf)
+		SetStr("commandLine", buf[0])	
 	endif
 End
 
 // for the second or any later word
 static Function CompleteFunctionName()
-	String line=CommandPanel_GetLine(), prefnc, fnc
+	String line=GetStr("commandLine"), prefnc, fnc
 	SplitString/E="^(.*?)((?<!\\w)[A-Za-z]\\w*)$" line, prefnc, fnc
 	String list = FunctionList(fnc + "*", ";", "KIND:3")
 	Make/FREE/T/N=(ItemsInList(list)) fncs = StringFromList(p, list)
 	Extract/T/FREE fncs, fncs, StringMatch(fncs, fnc + "*")
 	Make/T/FREE/N=(DimSize(fncs, 0)) buf = prefnc + fncs
 	if(DimSize(buf, 0))
-		CommandPanel_SetBuffer(buf)
-		CommandPanel_SetLine(buf[0])	
+		CommandPanelOutput(buf)
+		SetStr("commandLine", buf[0])	
 	endif
 End
 
@@ -1251,71 +998,6 @@ static Function SetStr(name, s)
 	endif
 	target = s
 End
-
-// Configuration variables
-// Use "Yes" or "No" for boolean values.
-
-static Function/S SetConfig(name, str)
-	String name, str
-	WAVE/T w = GetTxtWave("config")	
-	Extract/T/FREE w, copy, !StringMatch(w, name + ":*")
-	InsertPoints DimSize(copy, 0), 1, copy
-	copy[inf] = name + ":" + str
-	SetTxtWave("config", copy) 
-End
-
-static Function/S GetConfig(name, defaultStr)
-	String name, defaultStr
-	WAVE/T w = GetTxtWave("config")	
-	Extract/T/FREE w, item, StringMatch(w, name + ":*")
-	if( DimSize(item, 0) > 0)
-		return StringByKey(name, item[0])
-	else
-		SetConfig(name,  defaultStr)
-		return defaultStr
-	endif
-End
-
-static Function SaveFile(name)
-	String name	
-	
-	NewPath/C/Q CommandPanelTmpPath, DirPath()
-	if(V_Flag == 0)
-		Variable ref
-		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
-		if(V_Flag == 0)
-			wfprintf ref, "%s\n", GetTxtWave(name)
-			Close ref
-		endif	
-		KillPath CommandPanelTmpPath
-	endif
-End
-
-static Function LoadFile(name)
-	String name
-
-	NewPath/C/Q CommandPanelTmpPath, DirPath()
-	if(V_Flag == 0)
-		Variable ref
-		Open/P=CommandPanelTmpPath/Z ref as name + ".txt"	
-		if(V_Flag == 0)
-			String buf = "", line
-			do
-				FReadLine ref, line
-				buf += SelectString(strlen(line), "", line)
-			while(strlen(line))
-			Close ref
-			Make/FREE/T/N=(ItemsInList(buf, "\r")) w = StringFromList(p, buf, "\r")
-			SetTxtWave(name, w)
-		endif	
-		KillPath CommandPanelTmpPath
-	endif
-End
-
-static Function/S DirPath()
-	return ParseFilePath(1, FunctionPath(""), ":", 1, 0) + "CommandPanel Waves"
-End
-
 
 //------------------------------------------------------------------------------
 // Strings utilities
@@ -1498,91 +1180,10 @@ Function/S CommandPanelProtoType_Sub(s)
 	return s
 End
 
-//------------------------------------------------------------------------------
-// Text waves utilities
-//------------------------------------------------------------------------------
-
-static Function/WAVE cast(w)
-	WAVE/T w
-	if(WaveExists(w))
-		Make/FREE/T/N=(DimSize(w,0)) f=w
-	else
-		Make/FREE/T/N=0 f
-	endif
-	return f
-End
-
-static Function/WAVE cons(s,w) // (:)
-	String s; WAVE/T w
-	if(null(w))
-		return cast({s})
-	endif
-	Duplicate/FREE/T cast(w),f
-	InsertPoints 0,1,f
-	f[0]=s
-	return f
-End
-
-static Function/WAVE extend(w1,w2) // (++)
-	WAVE/T w1,w2
-	Make/FREE/T/N=0 f
-	Concatenate/NP/T {cast(w1),cast(w2)},f
-	return f
-End
-
-static Function/S head(w)
-	WAVE/T w
-	if(null(w))
-		return ""
-	endif
-	return w[0]
-End
-
-static Function/WAVE tail(w)
-	WAVE/T w
-	if(null(w))
-		return cast($"")
-	endif
-	WAVE/T f=cast(w)
-	DeletePoints 0,1,f
-	return f
-End
-
-static Function/S last(w)
-	WAVE/T w
-	if(null(w))
-		return ""
-	endif
-	return w[inf]
-End
-
-static Function/WAVE init(w)
-	WAVE/T w
-	if(null(w))
-		return cast($"")
-	endif
-	WAVE/T f=cast(w)
-	DeletePoints length(f)-1,1,f
-	return f	
-End
-
-static Function null(w)
-	WAVE/T w
-	return !length(w)
-End
-
-static Function length(w)
-	WAVE/T w
-	return numpnts(cast(w))
-End
-
-static Function/WAVE map(f,w)
-	FUNCREF CommandPanelProtoType_Id f; WAVE/T w
-	WAVE/T buf=cast(w)
-	if(length(buf))
-		buf=f(w)
-	endif
-	return buf
+Function/WAVE CommandPanelProtoType_Split(s)
+	String s
+	Make/FREE/T/N=(ItemsInList(s)) w = StringFromList(p,s)
+	return w
 End
 
 static Function/WAVE concatMap(f,w)
@@ -1593,17 +1194,4 @@ static Function/WAVE concatMap(f,w)
 			Concatenate/T/NP {f(w[i])}, buf
 	endfor
 	return buf
-End
-
-override Function/S CommandPanelProtoType_Id(s)
-	String s
-
-	return s
-End
-
-override Function/WAVE CommandPanelProtoType_Split(s)
-	String s
-
-	Make/FREE/T/N=(ItemsInList(s)) w = StringFromList(p,s)
-	return w
 End
