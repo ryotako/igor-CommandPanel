@@ -86,7 +86,7 @@ Function CommandPanelExecute(s)
 
 	if(strlen(s))
 		Variable error; String out
-		ExpandAndExecute(s,out,error)
+		ExpandAndExecute(s, out, error)
 		return error
 	else
 		return 0
@@ -223,10 +223,7 @@ static Function AcceptLine()
 		SetHistory(input)
 		SetStr("commandLine", "")
 	endif
-	
-	// refocus
-//	DoWindow/F $win
-	
+		
 	// output
 	if( GetVar("bufferChanged") )
 		return NaN
@@ -683,16 +680,16 @@ End
 
 static Function/WAVE Folders(path)
 	String path
-	Make/T/FREE/N=(CountObj(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	Make/T/FREE/N=(CountObject(path,4)) w = PossiblyQuoteName(GetIndexedObjName(path,4,p))
 	return w
 End
 
 static Function/WAVE Objects(path)
 	String path
-	Make/T/FREE/N=(CountObj(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
-	Make/T/FREE/N=(CountObj(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
-	Make/T/FREE/N=(CountObj(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
-	Make/T/FREE/N=(CountObj(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
+	Make/T/FREE/N=(CountObject(path,1)) wav = PossiblyQuoteName(GetIndexedObjName(path,1,p))		
+	Make/T/FREE/N=(CountObject(path,2)) var = PossiblyQuoteName(GetIndexedObjName(path,2,p))		
+	Make/T/FREE/N=(CountObject(path,3)) str = PossiblyQuoteName(GetIndexedObjName(path,3,p))		
+	Make/T/FREE/N=(CountObject(path,4)) fld = PossiblyQuoteName(GetIndexedObjName(path,4,p))
 	Make/FREE/T/N=0 f; Concatenate/T/NP {fld,wav,var,str},f
 	return f
 End
@@ -701,7 +698,7 @@ static Function/WAVE GlobFolders(path)
 	String path
 	WAVE/T w = GlobFolders_(path)
 	if(DimSize(w, 0) > 0)
-		w=RemoveEnding(RemoveBeginning(w,path),":")
+		w=RemoveEnding((w)[strlen(path), inf], ":")
 	endif
 	return w
 End
@@ -717,18 +714,12 @@ static Function/WAVE GlobFolders_(path)
 	return buf
 End
 
-static Function CountObj(path,type)
+// Just a wrapper of CountObjects:
+//	This function does not return NaN. 
+static Function CountObject(path,type)
 	String path; Variable type
 	Variable v=CountObjects(path,type)
 	return numtype(v) ? 0 : v
-End
-
-static Function/S RemoveBeginning(s,beginning)
-	String s,beginning
-	if(strlen(beginning) && cmpstr(s[0,strlen(beginning)-1],beginning)==0)
-		return s[strlen(beginning),inf]
-	endif
-	return s
 End
 
 //------------------------------------------------------------------------------
@@ -846,10 +837,10 @@ static Function CompletePathname()
 	String line=GetStr("commandLine"), cmd, path, name, s
 	SplitString/E="^(.*?)(((?<!\w)root)?:(([a-zA-Z_]\w*)?:)*)([a-zA-Z_]\w*|\'[^;:\"\']*)?$" line,cmd,path,s,s,s,name
 	if(DataFolderExists(path))
-		Make/FREE/T/N=(CountObjects(path, 1)) wav = PossiblyQuoteName(GetIndexedObjName(path, 1, p))		
-		Make/FREE/T/N=(CountObjects(path, 2)) var = PossiblyQuoteName(GetIndexedObjName(path, 2, p))		
-		Make/FREE/T/N=(CountObjects(path, 3)) str = PossiblyQuoteName(GetIndexedObjName(path, 3, p))		
-		Make/FREE/T/N=(CountObjects(path, 4)) fld = PossiblyQuoteName(GetIndexedObjName(path, 4, p))
+		Make/FREE/T/N=(CountObject(path, 1)) wav = PossiblyQuoteName(GetIndexedObjName(path, 1, p))		
+		Make/FREE/T/N=(CountObject(path, 2)) var = PossiblyQuoteName(GetIndexedObjName(path, 2, p))		
+		Make/FREE/T/N=(CountObject(path, 3)) str = PossiblyQuoteName(GetIndexedObjName(path, 3, p))		
+		Make/FREE/T/N=(CountObject(path, 4)) fld = PossiblyQuoteName(GetIndexedObjName(path, 4, p))
 		Make/FREE/T/N=0 obj
 		Concatenate/T/NP {wav, var, str, fld}, obj
 		Extract/T/FREE obj,obj,StringMatch(obj, name + "*")
