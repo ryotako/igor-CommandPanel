@@ -1,6 +1,13 @@
 #pragma ModuleName = CommandPanel
+#pragma version = 1.0
 
 ////////////////////////////////////////////////////////////////////////////////
+// 2017-Oct-6                                                                 //
+//   version 1.0                                                              //
+//   - Remove redunbant features.                                             //
+//   - Rewrite tests with unit testing framework for Igor Pro.                //
+//   - Polish the code.                                                       //
+//                                                                            //
 // 2016-Dec-31                                                                //
 //   Revisions by Jim Prouty, Igorian Chant Software                          //
 //   Works with NVAR SVAR WAVE checking turned on (added /Z to NVAR and SVAR).//
