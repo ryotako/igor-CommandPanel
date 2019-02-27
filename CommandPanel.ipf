@@ -161,18 +161,24 @@ static Function LineAction(s)
 	STRUCT WMSetVariableAction &s
 	DoWindow/T $s.win, GetDataFolder(1)	// Update title
 	
-	if(s.eventCode == 2) // key input
-		switch(s.eventMod)
-			case 0: // Enter
-				AcceptLine()
-				break
-			case 2: // Shift + Enter
-				Complete()
-				break
-			case 4: // Alt + Enter
-				AltComplete()
-				break
-		endswitch
+	if(s.eventCode != 2) // The following works only when Enter is pressed
+		return 0
+	endif
+
+	#if IgorVersion() >= 7
+		Variable isShiftPressed = GetKeyState(0)==4
+		Variable isAltPressed = GetKeyState(0)==2
+	#else
+		Variable isShiftPressed = s.eventMod==2
+		Variable isAltPressed = s.eventMod==4
+	#endif
+
+	if (isShiftPressed)
+		Complete()
+	elseif (isAltPressed)
+		AltComplete()
+	else
+		AcceptLine()
 	endif
 End
 
