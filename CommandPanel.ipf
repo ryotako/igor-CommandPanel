@@ -254,8 +254,17 @@ static Function ExpandAndExecute(input, output, error)
 		Make/FREE/T cmds = {input}
 	endif
 	Variable i,N=DimSize(cmds,0)
+
+	Variable prefix
+	Variable isWindows = cmpstr(IgorInfo(2),"Macintosh")
+	if (isWindows)
+		prefix = igorVersion() >= 7 ? 8226 : 42
+	else
+		prefix = -91
+	endif
+	 
 	for(i=0;i<N;i+=1)
-		print num2char(cmpstr(IgorInfo(2),"Macintosh") ? 42 : -91) + cmds[i] + "\r"
+		printf "%s%s\r", num2char(prefix), cmds[i]
 		Variable ref = CaptureHistoryStart()
 		Execute/Z cmds[i]
 		error = V_Flag
